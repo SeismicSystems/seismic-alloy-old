@@ -319,7 +319,7 @@ where
                 builder.set_input(Bytes::from(encrypted_input));
             }
         }
-        let res = self.inner.send_transaction_internal_without_heartbeat(tx).await;
+        let res = self.inner.send_transaction_internal(tx).await;
         res
     }
 }
