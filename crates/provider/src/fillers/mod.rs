@@ -323,8 +323,6 @@ where
                 return Err(RpcError::local_usage_str(&message));
             }
         }
-        println!("fillProvider send_transaction_internal: tx: {:?}", tx);
-
         // Errors in tx building happen further down the stack.
         self.inner.send_transaction_internal(tx).await
     }
