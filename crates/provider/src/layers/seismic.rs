@@ -412,7 +412,7 @@ mod tests {
 
         let unsigned_provider = SeismicUnsignedProvider::new(anvil.endpoint_url());
 
-        let mut tx = build_seismic_tx(plaintext, TxKind::Create, Address::ZERO);
+        let mut tx = TransactionRequest::default().with_input(plaintext).with_kind(TxKind::Create);
         tx.gas_price = None;
 
         let res = unsigned_provider.seismic_call(SendableTx::Builder(tx)).await.unwrap();
