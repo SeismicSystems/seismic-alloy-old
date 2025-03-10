@@ -2,7 +2,7 @@
 
 use crate::{
     fillers::{
-        CachedNonceManager, FillProvider, JoinFill, NonceFiller, RecommendedFillers, WalletFiller,
+        FillProvider, JoinFill, NonceFiller, RecommendedFillers, SimpleNonceManager, WalletFiller,
     },
     Identity, PendingTransactionBuilder, Provider, ProviderBuilder, ProviderLayer, RootProvider,
     SendableTx,
@@ -20,7 +20,7 @@ use alloy_transport::TransportError;
 
 /// Seismic provider
 pub type SeismicSignedProviderInner = FillProvider<
-    JoinFill<Identity, NonceFiller<CachedNonceManager>>,
+    JoinFill<Identity, NonceFiller<SimpleNonceManager>>,
     SeismicProvider<
         FillProvider<
             JoinFill<
@@ -50,8 +50,8 @@ impl SeismicSignedProvider {
             JoinFill::new(Ethereum::recommended_fillers(), WalletFiller::new(wallet.clone()));
 
         // Create nonce management layer
-        let nonce_layer: JoinFill<Identity, NonceFiller<CachedNonceManager>> =
-            JoinFill::new(Identity, NonceFiller::<CachedNonceManager>::default());
+        let nonce_layer: JoinFill<Identity, NonceFiller<SimpleNonceManager>> =
+            JoinFill::new(Identity, NonceFiller::<SimpleNonceManager>::default());
 
         // Build and return the provider
         let inner = ProviderBuilder::new()
@@ -73,7 +73,7 @@ impl Deref for SeismicSignedProvider {
 
 /// Seismic unsigned provider
 pub type SeismicUnsignedProviderInner = FillProvider<
-    JoinFill<Identity, NonceFiller<CachedNonceManager>>,
+    JoinFill<Identity, NonceFiller<SimpleNonceManager>>,
     SeismicProvider<
         FillProvider<
             JoinFill<<Ethereum as RecommendedFillers>::RecommendedFillers, Identity>,
@@ -97,8 +97,8 @@ impl SeismicUnsignedProvider {
     pub fn new(url: reqwest::Url) -> Self {
         // Create wallet layer with recommended fillers
         let wallet_layer = JoinFill::new(Ethereum::recommended_fillers(), Identity);
-        let nonce_layer: JoinFill<Identity, NonceFiller<CachedNonceManager>> =
-            JoinFill::new(Identity, NonceFiller::<CachedNonceManager>::default());
+        let nonce_layer: JoinFill<Identity, NonceFiller<SimpleNonceManager>> =
+            JoinFill::new(Identity, NonceFiller::<SimpleNonceManager>::default());
 
         let inner = ProviderBuilder::new()
             .network::<Ethereum>()
