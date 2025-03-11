@@ -9,10 +9,10 @@ use crate::{
 };
 use alloy_consensus::{transaction::TxSeismicElements, TxSeismic};
 use alloy_network::{Ethereum, EthereumWallet, Network, TransactionBuilder};
-use alloy_primitives::{Address, Bytes, FixedBytes, TxKind};
+use alloy_primitives::{Address, Bytes, TxKind};
 use alloy_rpc_types_eth::{TransactionInput, TransactionRequest};
 use alloy_transport::{Transport, TransportErrorKind, TransportResult};
-use seismic_enclave::{ecdh_decrypt, ecdh_encrypt, rand, Keypair, PublicKey, Secp256k1};
+use seismic_enclave::{ecdh_decrypt, ecdh_encrypt, PublicKey};
 use std::{marker::PhantomData, ops::Deref};
 
 #[cfg(feature = "ws")]
@@ -189,12 +189,6 @@ where
         Self { inner, _pd: PhantomData }
     }
 
-    /// Get the encryption private key
-    pub fn get_encryption_keypair(&self) -> Keypair {
-        let secp = Secp256k1::new();
-        Keypair::new(&secp, &mut rand::thread_rng())
-    }
-
     /// Should encrypt input
     pub fn should_encrypt_input<B: TransactionBuilder<N>>(&self, tx: &B) -> bool {
         tx.input().map_or(false, |input| !input.is_empty()) && tx.nonce().is_some()
@@ -232,12 +226,11 @@ where
                 .map_err(|e| {
                     TransportErrorKind::custom_str(&format!("Error decoding tee pubkey: {:?}", e))
                 })?;
-                let encryption_keypair = self.get_encryption_keypair();
+                let encryption_keypair = TxSeismicElements::get_rand_encryption_keypair();
 
                 // Generate new public/private keypair for this transaction
-                let pubkey_bytes = FixedBytes(encryption_keypair.public_key().serialize());
                 builder.set_seismic_elements(TxSeismicElements {
-                    encryption_pubkey: pubkey_bytes,
+                    encryption_pubkey: encryption_keypair.public_key(),
                     ..Default::default()
                 });
 
@@ -303,12 +296,11 @@ where
                 .map_err(|e| {
                     TransportErrorKind::custom_str(&format!("Error decoding tee pubkey: {:?}", e))
                 })?;
-                let encryption_keypair = self.get_encryption_keypair();
 
                 // Generate new public/private keypair for this transaction
-                let pubkey_bytes = FixedBytes(encryption_keypair.public_key().serialize());
+                let encryption_keypair = TxSeismicElements::get_rand_encryption_keypair();
                 builder.set_seismic_elements(TxSeismicElements {
-                    encryption_pubkey: pubkey_bytes,
+                    encryption_pubkey: encryption_keypair.public_key(),
                     ..Default::default()
                 });
 

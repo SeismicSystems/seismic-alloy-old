@@ -1353,7 +1353,9 @@ mod tests {
     #[test]
     #[cfg(feature = "serde")]
     fn test_serde_roundtrip_seismic() {
-        use crate::transaction::EncryptionPublicKey;
+        let encryption_keypair = TxSeismicElements::get_rand_encryption_keypair();
+        let encryption_pubkey = encryption_keypair.public_key();
+        let message_version = 1;
 
         let tx = TxSeismic {
             chain_id: 1,
@@ -1362,10 +1364,7 @@ mod tests {
             gas_limit: 50_000,
             to: Address::default().into(),
             value: U256::from(10e18),
-            seismic_elements: TxSeismicElements {
-                encryption_pubkey: EncryptionPublicKey::new([0u8; 33]),
-                ..Default::default()
-            },
+            seismic_elements: TxSeismicElements { encryption_pubkey, message_version },
             input: Bytes::new(),
         };
         test_serde_roundtrip(tx);
