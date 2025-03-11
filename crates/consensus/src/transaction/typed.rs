@@ -6,7 +6,7 @@ use crate::{
     Transaction, TxEip1559, TxEip2930, TxEip7702, TxEnvelope, TxLegacy, TxType, Typed2718,
 };
 
-use super::TxSeismic;
+use super::{seismic::TxSeismicElements, TxSeismic};
 
 /// The TypedTransaction enum represents all Ethereum transaction request types.
 ///
@@ -368,17 +368,9 @@ impl Transaction for TypedTransaction {
     }
 
     #[inline]
-    fn encryption_pubkey(&self) -> Option<&crate::transaction::EncryptionPublicKey> {
+    fn seismic_elements(&self) -> Option<&TxSeismicElements> {
         match self {
-            Self::Seismic(tx) => tx.encryption_pubkey(),
-            _ => None,
-        }
-    }
-
-    #[inline]
-    fn message_version(&self) -> Option<u8> {
-        match self {
-            Self::Seismic(tx) => tx.message_version(),
+            Self::Seismic(tx) => tx.seismic_elements(),
             _ => None,
         }
     }

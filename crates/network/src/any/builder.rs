@@ -102,23 +102,15 @@ impl TransactionBuilder<AnyNetwork> for WithOtherFields<TransactionRequest> {
         self.deref_mut().set_access_list(access_list)
     }
 
-    fn encryption_pubkey(&self) -> Option<&alloy_consensus::transaction::EncryptionPublicKey> {
-        self.deref().encryption_pubkey()
+    fn seismic_elements(&self) -> Option<&alloy_consensus::transaction::TxSeismicElements> {
+        self.deref().seismic_elements()
     }
 
-    fn set_encryption_pubkey(
+    fn set_seismic_elements(
         &mut self,
-        encryption_pubkey: alloy_consensus::transaction::EncryptionPublicKey,
+        seismic_elements: alloy_consensus::transaction::TxSeismicElements,
     ) {
-        self.deref_mut().set_encryption_pubkey(encryption_pubkey);
-    }
-
-    fn message_version(&self) -> Option<u8> {
-        self.deref().message_version()
-    }
-
-    fn set_message_version(&mut self, message_version: u8) {
-        self.deref_mut().set_message_version(message_version);
+        self.deref_mut().set_seismic_elements(seismic_elements);
     }
 
     fn complete_type(&self, ty: <AnyNetwork as Network>::TxType) -> Result<(), Vec<&'static str>> {

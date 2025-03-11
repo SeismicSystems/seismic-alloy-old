@@ -17,7 +17,7 @@ use alloy_primitives::{
 use alloy_rlp::{Decodable, Encodable, Header};
 use core::hash::{Hash, Hasher};
 
-use super::TxSeismic;
+use super::{seismic::TxSeismicElements, TxSeismic};
 
 /// All possible transactions that can be included in a response to `GetPooledTransactions`.
 /// A response to `GetPooledTransactions`. This can include either a blob transaction, or a
@@ -504,9 +504,9 @@ impl Transaction for PooledTransaction {
         }
     }
 
-    fn encryption_pubkey(&self) -> Option<&crate::transaction::EncryptionPublicKey> {
+    fn seismic_elements(&self) -> Option<&TxSeismicElements> {
         match self {
-            Self::Seismic(tx) => tx.tx().encryption_pubkey(),
+            Self::Seismic(tx) => tx.tx().seismic_elements(),
             _ => None,
         }
     }

@@ -16,7 +16,7 @@ use alloy_primitives::{
 use alloy_rlp::{Decodable, Encodable};
 use core::fmt;
 
-use super::{SignableTransaction, TxSeismic};
+use super::{seismic::TxSeismicElements, SignableTransaction, TxSeismic};
 
 /// Ethereum `TransactionType` flags as specified in EIPs [2718], [1559], [2930],
 /// [4844], and [7702].
@@ -710,17 +710,9 @@ impl Transaction for TxEnvelope {
     }
 
     #[inline]
-    fn encryption_pubkey(&self) -> Option<&crate::transaction::EncryptionPublicKey> {
+    fn seismic_elements(&self) -> Option<&TxSeismicElements> {
         match self {
-            Self::Seismic(tx) => tx.tx().encryption_pubkey(),
-            _ => None,
-        }
-    }
-
-    #[inline]
-    fn message_version(&self) -> Option<u8> {
-        match self {
-            Self::Seismic(tx) => tx.tx().message_version(),
+            Self::Seismic(tx) => tx.tx().seismic_elements(),
             _ => None,
         }
     }
@@ -1370,8 +1362,10 @@ mod tests {
             gas_limit: 50_000,
             to: Address::default().into(),
             value: U256::from(10e18),
-            encryption_pubkey: EncryptionPublicKey::new([0u8; 33]),
-            message_version: 0,
+            seismic_elements: TxSeismicElements {
+                encryption_pubkey: EncryptionPublicKey::new([0u8; 33]),
+                ..Default::default()
+            },
             input: Bytes::new(),
         };
         test_serde_roundtrip(tx);

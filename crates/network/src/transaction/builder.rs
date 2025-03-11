@@ -249,39 +249,27 @@ pub trait TransactionBuilder<N: Network>: Default + Sized + Send + Sync + 'stati
         self
     }
 
-    /// Get the encryption pubkey for the transaction.
-    fn encryption_pubkey(&self) -> Option<&alloy_consensus::transaction::EncryptionPublicKey>;
+    /// Get the seismic elements for the transaction.
+    fn seismic_elements(&self) -> Option<&alloy_consensus::transaction::TxSeismicElements>;
 
-    /// Set the encryption pubkey for the transaction.
-    fn set_encryption_pubkey(
+    /// Set the seismic elements for the transaction.
+    fn set_seismic_elements(
         &mut self,
-        encryption_pubkey: alloy_consensus::transaction::EncryptionPublicKey,
+        seismic_elements: alloy_consensus::transaction::TxSeismicElements,
     );
 
-    /// Builder pattern for setting the encryption pubkey.
-    fn with_encryption_pubkey(
+    /// Builder pattern for setting the seismic elements.
+    fn with_seismic_elements(
         mut self,
-        encryption_pubkey: alloy_consensus::transaction::EncryptionPublicKey,
+        seismic_elements: alloy_consensus::transaction::TxSeismicElements,
     ) -> Self {
-        self.set_encryption_pubkey(encryption_pubkey);
+        self.set_seismic_elements(seismic_elements);
         self
     }
 
     /// Returns true if the transaction is a seismic transaction.
     fn is_seismic(&self) -> bool {
-        self.encryption_pubkey().is_some()
-    }
-
-    /// Get the EIP712 version for the transaction.
-    fn message_version(&self) -> Option<u8>;
-
-    /// Set the EIP712 version for the transaction.
-    fn set_message_version(&mut self, message_version: u8);
-
-    /// Builder pattern for setting the EIP712 version.
-    fn with_message_version(mut self, message_version: u8) -> Self {
-        self.set_message_version(message_version);
-        self
+        self.seismic_elements().is_some()
     }
 
     /// Get the gas limit for the transaction.

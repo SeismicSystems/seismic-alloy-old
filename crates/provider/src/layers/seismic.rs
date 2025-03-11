@@ -7,7 +7,7 @@ use crate::{
     Identity, PendingTransactionBuilder, Provider, ProviderBuilder, ProviderLayer, RootProvider,
     SendableTx,
 };
-use alloy_consensus::TxSeismic;
+use alloy_consensus::{transaction::TxSeismicElements, TxSeismic};
 use alloy_network::{Ethereum, EthereumWallet, Network, TransactionBuilder};
 use alloy_primitives::{Address, Bytes, FixedBytes, TxKind};
 use alloy_rpc_types_eth::{TransactionInput, TransactionRequest};
@@ -236,7 +236,10 @@ where
 
                 // Generate new public/private keypair for this transaction
                 let pubkey_bytes = FixedBytes(encryption_keypair.public_key().serialize());
-                builder.set_encryption_pubkey(pubkey_bytes);
+                builder.set_seismic_elements(TxSeismicElements {
+                    encryption_pubkey: pubkey_bytes,
+                    ..Default::default()
+                });
 
                 // Encrypt using recipient's public key and generated private key
                 let plaintext_input = builder.input().unwrap();
@@ -249,6 +252,7 @@ where
                 .map_err(|e| {
                     TransportErrorKind::custom_str(&format!("Error encrypting input: {:?}", e))
                 })?;
+
                 builder.set_input(Bytes::from(encrypted_input));
 
                 // decrypting output
@@ -303,7 +307,10 @@ where
 
                 // Generate new public/private keypair for this transaction
                 let pubkey_bytes = FixedBytes(encryption_keypair.public_key().serialize());
-                builder.set_encryption_pubkey(pubkey_bytes);
+                builder.set_seismic_elements(TxSeismicElements {
+                    encryption_pubkey: pubkey_bytes,
+                    ..Default::default()
+                });
 
                 // Encrypt using recipient's public key and generated private key
                 let plaintext_input = builder.input().unwrap();
@@ -398,7 +405,10 @@ mod tests {
         let provider = SeismicSignedProvider::new(wallet.clone(), anvil.endpoint_url());
 
         let from = wallet.default_signer().address();
-        let tx = build_seismic_tx(plaintext, TxKind::Create, from);
+        let tx = TransactionRequest::default()
+            .with_input(plaintext)
+            .with_kind(TxKind::Create)
+            .with_from(from);
 
         let res = provider.seismic_call(SendableTx::Builder(tx)).await.unwrap();
 
@@ -412,8 +422,10 @@ mod tests {
 
         let unsigned_provider = SeismicUnsignedProvider::new(anvil.endpoint_url());
 
-        let mut tx = build_seismic_tx(plaintext, TxKind::Create, Address::ZERO);
-        tx.gas_price = None;
+        let tx = TransactionRequest::default()
+            .with_input(plaintext)
+            .with_from(Address::ZERO)
+            .with_kind(TxKind::Create);
 
         let res = unsigned_provider.seismic_call(SendableTx::Builder(tx)).await.unwrap();
         assert_eq!(res, ContractTestContext::get_code());
