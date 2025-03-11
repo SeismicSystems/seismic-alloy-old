@@ -16,7 +16,7 @@ use alloy_primitives::{
 use alloy_rlp::{Decodable, Encodable};
 use core::fmt;
 
-use super::{SignableTransaction, TxSeismic};
+use super::{seismic::TxSeismicElements, SignableTransaction, TxSeismic};
 
 /// Ethereum `TransactionType` flags as specified in EIPs [2718], [1559], [2930],
 /// [4844], and [7702].
@@ -710,17 +710,9 @@ impl Transaction for TxEnvelope {
     }
 
     #[inline]
-    fn encryption_pubkey(&self) -> Option<&crate::transaction::EncryptionPublicKey> {
+    fn seismic_elements(&self) -> Option<&TxSeismicElements> {
         match self {
-            Self::Seismic(tx) => tx.tx().encryption_pubkey(),
-            _ => None,
-        }
-    }
-
-    #[inline]
-    fn message_version(&self) -> Option<u8> {
-        match self {
-            Self::Seismic(tx) => tx.tx().message_version(),
+            Self::Seismic(tx) => tx.tx().seismic_elements(),
             _ => None,
         }
     }

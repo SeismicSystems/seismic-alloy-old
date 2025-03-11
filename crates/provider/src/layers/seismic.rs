@@ -7,7 +7,7 @@ use crate::{
     Identity, PendingTransactionBuilder, Provider, ProviderBuilder, ProviderLayer, RootProvider,
     SendableTx,
 };
-use alloy_consensus::TxSeismic;
+use alloy_consensus::{transaction::TxSeismicElements, TxSeismic};
 use alloy_network::{Ethereum, EthereumWallet, Network, TransactionBuilder};
 use alloy_primitives::{Address, Bytes, FixedBytes, TxKind};
 use alloy_rpc_types_eth::{TransactionInput, TransactionRequest};
@@ -236,7 +236,10 @@ where
 
                 // Generate new public/private keypair for this transaction
                 let pubkey_bytes = FixedBytes(encryption_keypair.public_key().serialize());
-                builder.set_encryption_pubkey(pubkey_bytes);
+                builder.set_seismic_elements(TxSeismicElements {
+                    encryption_pubkey: pubkey_bytes,
+                    ..Default::default()
+                });
 
                 // Encrypt using recipient's public key and generated private key
                 let plaintext_input = builder.input().unwrap();
@@ -249,6 +252,7 @@ where
                 .map_err(|e| {
                     TransportErrorKind::custom_str(&format!("Error encrypting input: {:?}", e))
                 })?;
+
                 builder.set_input(Bytes::from(encrypted_input));
 
                 // decrypting output
@@ -303,7 +307,10 @@ where
 
                 // Generate new public/private keypair for this transaction
                 let pubkey_bytes = FixedBytes(encryption_keypair.public_key().serialize());
-                builder.set_encryption_pubkey(pubkey_bytes);
+                builder.set_seismic_elements(TxSeismicElements {
+                    encryption_pubkey: pubkey_bytes,
+                    ..Default::default()
+                });
 
                 // Encrypt using recipient's public key and generated private key
                 let plaintext_input = builder.input().unwrap();

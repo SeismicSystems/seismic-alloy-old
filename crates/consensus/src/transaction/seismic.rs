@@ -15,6 +15,42 @@ use core::mem;
 /// Compressed secp256k1 public key
 pub type EncryptionPublicKey = FixedBytes<33>;
 
+/// Contains Seismic-specific encryption and message fields
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
+#[cfg_attr(any(test, feature = "arbitrary"), derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+pub struct TxSeismicElements {
+    /// The public key we will decrypt to
+    #[cfg_attr(feature = "serde", serde(alias = "encryptionPubkey"))]
+    pub encryption_pubkey: EncryptionPublicKey,
+
+    /// The EIP712 version of the transaction when the user submitted it using signTypedDataV4.
+    /// A value of 0 means the transaction was not signed using EIP712
+    #[cfg_attr(feature = "serde", serde(alias = "messageVersion", default))]
+    pub message_version: u8,
+}
+
+impl Encodable for TxSeismicElements {
+    fn encode(&self, out: &mut dyn BufMut) {
+        self.encryption_pubkey.encode(out);
+        self.message_version.encode(out);
+    }
+
+    fn length(&self) -> usize {
+        self.encryption_pubkey.length() + self.message_version.length()
+    }
+}
+
+impl Decodable for TxSeismicElements {
+    fn decode(buf: &mut &[u8]) -> alloy_rlp::Result<Self> {
+        Ok(Self {
+            encryption_pubkey: Decodable::decode(buf)?,
+            message_version: Decodable::decode(buf)?,
+        })
+    }
+}
+
 /// Basic encrypted transaction type
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
 #[cfg_attr(any(test, feature = "arbitrary"), derive(arbitrary::Arbitrary))]
@@ -47,28 +83,24 @@ pub struct TxSeismic {
         serde(with = "alloy_serde::quantity", rename = "gas", alias = "gasLimit")
     )]
     pub gas_limit: u64,
-    /// The 160-bit address of the message call’s recipient or, for a contract creation
+    /// The 160-bit address of the message call's recipient or, for a contract creation
     /// transaction, ∅, used here to denote the only member of B0 ; formally Tt.
     #[cfg_attr(feature = "serde", serde(default))]
     pub to: TxKind,
     /// A scalar value equal to the number of Wei to
-    /// be transferred to the message call’s recipient or,
+    /// be transerred to the message call's recipient or,
     /// in the case of contract creation, as an endowment
     /// to the newly created account; formally Tv.
     pub value: U256,
-    /// The public key we will decrypt to
-    #[cfg_attr(feature = "serde", serde(alias = "encryptionPubkey"))]
-    pub encryption_pubkey: EncryptionPublicKey,
-    /// The EIP712 version of the transaction when the user submitted it using signTypedDataV4.
-    /// A value of 0 means the transaction was not signed using EIP712
-    #[cfg_attr(feature = "serde", serde(alias = "messageVersion", default))]
-    pub message_version: u8,
     /// Input has two uses depending if transaction is Create or Call (if `to` field is None or
     /// Some). pub init: An unlimited size byte array specifying the
     /// EVM-code for the account initialisation procedure CREATE,
     /// data: An unlimited size byte array specifying the
     /// input data of the message call, formally Td.
     pub input: Bytes,
+    /// Seismic-specific encryption and message data
+    #[cfg_attr(feature = "serde", serde(flatten))]
+    pub seismic_elements: TxSeismicElements,
 }
 
 impl TxSeismic {
@@ -83,7 +115,7 @@ impl TxSeismic {
 
     /// Returns true if the transaction is signed using EIP712
     pub fn is_eip712(&self) -> bool {
-        self.message_version >= 2
+        self.seismic_elements.message_version >= 2
     }
 
     /// Calculates a heuristic for the in-memory size of the [`TxSeismic`] transaction.
@@ -99,7 +131,7 @@ impl TxSeismic {
         mem::size_of::<u128>() + // max_priority_fee_per_gas
         self.to.size() + // to
         mem::size_of::<U256>() + // value
-        self.encryption_pubkey.len() + // encryption public key
+        self.seismic_elements.encryption_pubkey.len() + // encryption public key
         mem::size_of::<u8>() + // message_version
         self.input.len() // input
     }
@@ -131,7 +163,7 @@ impl TxSeismic {
             "primaryType": "TxSeismic",
             "domain": {
                 "name": "Seismic Transaction",
-                "version": self.message_version.to_string(),
+                "version": self.seismic_elements.message_version.to_string(),
                 "chainId": self.chain_id,
                 // no verifying contract since this happens in RPC
                 "verifyingContract": "0x0000000000000000000000000000000000000000",
@@ -147,8 +179,8 @@ impl TxSeismic {
                 },
                 "value": self.value.to_string(),
                 "input": self.input.to_string(),
-                "encryptionPubkey": self.encryption_pubkey.to_string(),
-                "messageVersion": self.message_version,
+                "encryptionPubkey": self.seismic_elements.encryption_pubkey.to_string(),
+                "messageVersion": self.seismic_elements.message_version,
             }
         });
         serde_json::from_value(typed_data_json)
@@ -197,8 +229,7 @@ impl RlpEcdsaTx for TxSeismic {
             + self.gas_limit.length()
             + self.to.length()
             + self.value.length()
-            + self.encryption_pubkey.length()
-            + self.message_version.length()
+            + self.seismic_elements.length()
             + self.input.length()
     }
 
@@ -211,8 +242,7 @@ impl RlpEcdsaTx for TxSeismic {
         self.gas_limit.encode(out);
         self.to.encode(out);
         self.value.encode(out);
-        self.encryption_pubkey.encode(out);
-        self.message_version.encode(out);
+        self.seismic_elements.encode(out);
         self.input.encode(out);
     }
 
@@ -238,8 +268,7 @@ impl RlpEcdsaTx for TxSeismic {
             gas_limit: Decodable::decode(buf)?,
             to: Decodable::decode(buf)?,
             value: Decodable::decode(buf)?,
-            encryption_pubkey: Decodable::decode(buf)?,
-            message_version: Decodable::decode(buf)?,
+            seismic_elements: Decodable::decode(buf)?,
             input: Decodable::decode(buf)?,
         })
     }
@@ -331,13 +360,8 @@ impl Transaction for TxSeismic {
     }
 
     #[inline]
-    fn encryption_pubkey(&self) -> Option<&FixedBytes<33>> {
-        Some(&self.encryption_pubkey)
-    }
-
-    #[inline]
-    fn message_version(&self) -> Option<u8> {
-        Some(self.message_version)
+    fn seismic_elements(&self) -> Option<&TxSeismicElements> {
+        Some(&self.seismic_elements)
     }
 }
 
@@ -474,8 +498,8 @@ pub(super) mod serde_bincode_compat {
                 gas_limit: value.gas_limit,
                 to: value.to,
                 value: value.value,
-                encryption_pubkey: Cow::Borrowed(&value.encryption_pubkey),
-                message_version: value.message_version,
+                encryption_pubkey: Cow::Borrowed(&value.seismic_elements.encryption_pubkey),
+                message_version: value.seismic_elements.message_version,
                 input: Cow::Borrowed(&value.input),
             }
         }
@@ -490,8 +514,10 @@ pub(super) mod serde_bincode_compat {
                 gas_limit: value.gas_limit,
                 to: value.to,
                 value: value.value,
-                encryption_pubkey: value.encryption_pubkey.into_owned(),
-                message_version: value.message_version,
+                seismic_elements: super::TxSeismicElements {
+                    encryption_pubkey: value.encryption_pubkey.into_owned(),
+                    message_version: value.message_version,
+                },
                 input: value.input.into_owned(),
             }
         }
@@ -566,8 +592,10 @@ mod tests {
             gas_limit: 100000,
             to: Address::from_str("d3e8763675e4c425df46cc3b5c0f6cbdac396046").unwrap().into(),
             value: U256::from(1000000000000000u64),
-            encryption_pubkey: hex!("028e76821eb4d77fd30223ca971c49738eb5b5b71eabe93f96b348fdce788ae5a0").into(),
-            message_version: 0,
+            seismic_elements: TxSeismicElements {
+                encryption_pubkey: hex!("028e76821eb4d77fd30223ca971c49738eb5b5b71eabe93f96b348fdce788ae5a0").into(),
+                message_version: 0,
+            },
             input:  hex!("a22cb4650000000000000000000000005eee75727d804a2b13038928d36f8b188945a57a0000000000000000000000000000000000000000000000000000000000000000").into(),
         };
 
@@ -634,8 +662,10 @@ mod tests {
             gas_limit: 100000,
             to: TxKind::Create,
             value: U256::from(1000000000000000u64),
-            encryption_pubkey: hex!("028e76821eb4d77fd30223ca971c49738eb5b5b71eabe93f96b348fdce788ae5a0").into(),
-            message_version: 2,
+            seismic_elements: TxSeismicElements {
+                encryption_pubkey: hex!("028e76821eb4d77fd30223ca971c49738eb5b5b71eabe93f96b348fdce788ae5a0").into(),
+                message_version: 2,
+            },
             input:  hex!("a22cb4650000000000000000000000005eee75727d804a2b13038928d36f8b188945a57a0000000000000000000000000000000000000000000000000000000000000000").into(),
         };
         let typed_data = tx.eip712_to_type_data();
@@ -677,10 +707,12 @@ mod tests {
                 10,
             )
             .unwrap(),
-            encryption_pubkey: FixedBytes::from_slice(&hex!(
-                "4abaa4e432448c7970aa06f4c6b0bf8a5ae0971f59727e457aca5bb41f575e33a3"
-            )),
-            message_version: u8::max_value(),
+            seismic_elements: TxSeismicElements {
+                encryption_pubkey: FixedBytes::from_slice(&hex!(
+                    "4abaa4e432448c7970aa06f4c6b0bf8a5ae0971f59727e457aca5bb41f575e33a3"
+                )),
+                message_version: u8::max_value(),
+            },
             input: Bytes::default(),
         };
         let typed_data = tx.eip712_to_type_data();

@@ -249,12 +249,8 @@ impl<T: TransactionTrait> TransactionTrait for Transaction<T> {
         self.inner.authorization_list()
     }
 
-    fn encryption_pubkey(&self) -> Option<&alloy_consensus::transaction::EncryptionPublicKey> {
-        self.inner.encryption_pubkey()
-    }
-
-    fn message_version(&self) -> Option<u8> {
-        self.inner.message_version()
+    fn seismic_elements(&self) -> Option<&alloy_consensus::transaction::TxSeismicElements> {
+        self.inner.seismic_elements()
     }
 }
 

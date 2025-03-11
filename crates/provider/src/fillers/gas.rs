@@ -150,7 +150,7 @@ impl<N: Network> TxFiller<N> for GasFiller {
         P: Provider<T, N>,
         T: Transport + Clone,
     {
-        if tx.gas_price().is_some() || tx.encryption_pubkey().is_some() {
+        if tx.gas_price().is_some() || tx.is_seismic() {
             self.prepare_legacy(provider, tx).await
         } else {
             match self.prepare_1559(provider, tx).await {

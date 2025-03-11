@@ -2,8 +2,9 @@
 
 use crate::{transaction::AccessList, BlobTransactionSidecar, Transaction, TransactionTrait};
 use alloy_consensus::{
-    transaction::TxSeismic, TxEip1559, TxEip2930, TxEip4844, TxEip4844Variant,
-    TxEip4844WithSidecar, TxEip7702, TxEnvelope, TxLegacy, TxType, Typed2718, TypedTransaction,
+    transaction::{TxSeismic, TxSeismicElements},
+    TxEip1559, TxEip2930, TxEip4844, TxEip4844Variant, TxEip4844WithSidecar, TxEip7702, TxEnvelope,
+    TxLegacy, TxType, Typed2718, TypedTransaction,
 };
 use alloy_eips::eip7702::SignedAuthorization;
 use alloy_network_primitives::{TransactionBuilder4844, TransactionBuilder7702};
@@ -134,10 +135,7 @@ pub struct TransactionRequest {
     pub authorization_list: Option<Vec<SignedAuthorization>>,
     /// Seismic tx encryption public key
     #[cfg_attr(feature = "serde", serde(default, skip_serializing_if = "Option::is_none"))]
-    pub encryption_pubkey: Option<alloy_consensus::transaction::EncryptionPublicKey>,
-    /// EIP712 version for Seismic transactions
-    #[cfg_attr(feature = "serde", serde(default, skip_serializing_if = "Option::is_none"))]
-    pub message_version: Option<u8>,
+    pub seismic_elements: Option<TxSeismicElements>,
 }
 
 impl TransactionRequest {
@@ -189,8 +187,7 @@ impl TransactionRequest {
             transaction_type: Some(tx_type),
             sidecar: None,
             authorization_list,
-            encryption_pubkey: tx.encryption_pubkey().cloned(),
-            message_version: tx.message_version(),
+            seismic_elements: tx.seismic_elements().cloned(),
         }
     }
 
@@ -466,10 +463,9 @@ impl TransactionRequest {
             to: checked_to,
             value: self.value.unwrap_or_default(),
             input: self.input.into_input().unwrap_or_default(),
-            encryption_pubkey: self
-                .encryption_pubkey
-                .ok_or("Missing 'encryption_pubkey' for seismic transaction")?,
-            message_version: self.message_version.unwrap_or(0),
+            seismic_elements: self
+                .seismic_elements
+                .ok_or("Missing 'seismic_elements' for seismic transaction.")?,
         })
     }
 
@@ -499,6 +495,9 @@ impl TransactionRequest {
         }
         if self.chain_id.is_none() {
             missing.push("chain_id");
+        }
+        if self.seismic_elements.is_none() {
+            missing.push("seismic_elements");
         }
     }
 
@@ -775,7 +774,7 @@ impl TransactionRequest {
 
     /// Returns true if the transaction is a seismic transaction.
     pub const fn is_seismic(&self) -> bool {
-        self.encryption_pubkey.is_some()
+        self.seismic_elements.is_some()
     }
 }
 
@@ -968,17 +967,8 @@ impl From<TxEip7702> for TransactionRequest {
 impl From<TxSeismic> for TransactionRequest {
     fn from(tx: TxSeismic) -> Self {
         let ty = tx.ty();
-        let TxSeismic {
-            chain_id,
-            nonce,
-            gas_price,
-            gas_limit,
-            to,
-            value,
-            encryption_pubkey,
-            message_version,
-            input,
-        } = tx;
+        let TxSeismic { chain_id, nonce, gas_price, gas_limit, to, value, input, seismic_elements } =
+            tx;
         Self {
             to: Some(to.into()),
             gas_price: Some(gas_price),
@@ -988,8 +978,7 @@ impl From<TxSeismic> for TransactionRequest {
             nonce: Some(nonce),
             chain_id: Some(chain_id),
             transaction_type: Some(ty),
-            encryption_pubkey: Some(encryption_pubkey),
-            message_version: Some(message_version),
+            seismic_elements: Some(seismic_elements),
             ..Default::default()
         }
     }

@@ -99,23 +99,15 @@ impl TransactionBuilder<Ethereum> for TransactionRequest {
         self.access_list = Some(access_list);
     }
 
-    fn encryption_pubkey(&self) -> Option<&alloy_consensus::transaction::EncryptionPublicKey> {
-        self.encryption_pubkey.as_ref()
+    fn seismic_elements(&self) -> Option<&alloy_consensus::transaction::TxSeismicElements> {
+        self.seismic_elements.as_ref()
     }
 
-    fn set_encryption_pubkey(
+    fn set_seismic_elements(
         &mut self,
-        encryption_pubkey: alloy_consensus::transaction::EncryptionPublicKey,
+        seismic_elements: alloy_consensus::transaction::TxSeismicElements,
     ) {
-        self.encryption_pubkey = Some(encryption_pubkey);
-    }
-
-    fn message_version(&self) -> Option<u8> {
-        self.message_version
-    }
-
-    fn set_message_version(&mut self, message_version: u8) {
-        self.message_version = Some(message_version);
+        self.seismic_elements = Some(seismic_elements);
     }
 
     fn complete_type(&self, ty: TxType) -> Result<(), Vec<&'static str>> {
