@@ -405,7 +405,10 @@ mod tests {
         let provider = SeismicSignedProvider::new(wallet.clone(), anvil.endpoint_url());
 
         let from = wallet.default_signer().address();
-        let tx = build_seismic_tx(plaintext, TxKind::Create, from);
+        let tx = TransactionRequest::default()
+            .with_input(plaintext)
+            .with_kind(TxKind::Create)
+            .with_from(from);
 
         let res = provider.seismic_call(SendableTx::Builder(tx)).await.unwrap();
 
@@ -419,8 +422,10 @@ mod tests {
 
         let unsigned_provider = SeismicUnsignedProvider::new(anvil.endpoint_url());
 
-        let mut tx = build_seismic_tx(plaintext, TxKind::Create, Address::ZERO);
-        tx.gas_price = None;
+        let tx = TransactionRequest::default()
+            .with_input(plaintext)
+            .with_from(Address::ZERO)
+            .with_kind(TxKind::Create);
 
         let res = unsigned_provider.seismic_call(SendableTx::Builder(tx)).await.unwrap();
         assert_eq!(res, ContractTestContext::get_code());
