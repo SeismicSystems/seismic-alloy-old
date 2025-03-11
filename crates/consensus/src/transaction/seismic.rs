@@ -12,8 +12,9 @@ use alloy_rlp::{BufMut, Decodable, Encodable};
 use core::mem;
 use rand::RngCore;
 use seismic_enclave::{
-    constants, ecdh_decrypt, ecdh_encrypt, rand, tx_io::IoDecryptionRequest, Keypair, PublicKey,
-    Secp256k1, SecretKey,
+    constants, ecdh_decrypt, ecdh_encrypt, rand,
+    tx_io::{IoDecryptionRequest, IoEncryptionRequest},
+    Keypair, PublicKey, Secp256k1, SecretKey,
 };
 
 /// Contains Seismic-specific encryption and message fields
@@ -74,12 +75,12 @@ impl TxSeismicElements {
         &self,
         ciphertext: &Bytes,
         network_sk: &SecretKey,
-    ) -> Result<IoDecryptionRequest, anyhow::Error> {
-        Ok(IoDecryptionRequest {
+    ) -> IoDecryptionRequest {
+        IoDecryptionRequest {
             key: self.encryption_pubkey,
             data: ciphertext.to_vec(),
-            nonce: self.encryption_nonce,
-        })
+            nonce: self.encryption_nonce.into(),
+        }
     }
 
     /// server encrypt: client pubkey, network sk
@@ -87,12 +88,12 @@ impl TxSeismicElements {
         &self,
         plaintext: &Bytes,
         network_sk: &SecretKey,
-    ) -> Result<IoEncryptionRequest, anyhow::Error> {
-        Ok(IoEncryptionRequest {
+    ) -> IoEncryptionRequest {
+        IoEncryptionRequest {
             key: self.encryption_pubkey,
             data: plaintext.to_vec(),
-            nonce: self.encryption_nonce,
-        })
+            nonce: self.encryption_nonce.into(),
+        }
     }
 
     /// client encrypt: network pubkey, client sk
