@@ -50,6 +50,7 @@ derive_more = { workspace = true, features = [
     "into_iterator",
 ], default-features = false }
 auto_impl.workspace = true
+anyhow = "1.0"
 
 
 [dev-dependencies]
