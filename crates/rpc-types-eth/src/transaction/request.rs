@@ -134,7 +134,10 @@ pub struct TransactionRequest {
     #[cfg_attr(feature = "serde", serde(default, skip_serializing_if = "Option::is_none"))]
     pub authorization_list: Option<Vec<SignedAuthorization>>,
     /// Seismic tx encryption public key
-    #[cfg_attr(feature = "serde", serde(default, skip_serializing_if = "Option::is_none"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(default, flatten, skip_serializing_if = "Option::is_none")
+    )]
     pub seismic_elements: Option<TxSeismicElements>,
 }
 
