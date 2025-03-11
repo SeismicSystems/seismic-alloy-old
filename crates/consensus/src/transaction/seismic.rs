@@ -12,7 +12,8 @@ use alloy_rlp::{BufMut, Decodable, Encodable};
 use core::mem;
 use rand::RngCore;
 use seismic_enclave::{
-    constants, ecdh_decrypt, ecdh_encrypt, rand, Keypair, PublicKey, Secp256k1, SecretKey,
+    constants, ecdh_decrypt, ecdh_encrypt, rand, tx_io::IoDecryptionRequest, Keypair, PublicKey,
+    Secp256k1, SecretKey,
 };
 
 /// Contains Seismic-specific encryption and message fields
@@ -69,31 +70,29 @@ impl TxSeismicElements {
     }
 
     /// server decrypt: client pubkey, network sk
-    pub fn server_decrypt(
+    pub fn to_enclave_decrypt_request(
         &self,
         ciphertext: &Bytes,
         network_sk: &SecretKey,
-    ) -> Result<Bytes, anyhow::Error> {
-        Ok(Bytes::from(ecdh_decrypt(
-            &self.encryption_pubkey,
-            network_sk,
-            ciphertext,
-            self.encryption_nonce,
-        )?))
+    ) -> Result<IoDecryptionRequest, anyhow::Error> {
+        Ok(IoDecryptionRequest {
+            key: self.encryption_pubkey,
+            data: ciphertext.to_vec(),
+            nonce: self.encryption_nonce,
+        })
     }
 
     /// server encrypt: client pubkey, network sk
-    pub fn server_encrypt(
+    pub fn to_enclave_encrypt_request(
         &self,
         plaintext: &Bytes,
         network_sk: &SecretKey,
-    ) -> Result<Bytes, anyhow::Error> {
-        Ok(Bytes::from(ecdh_encrypt(
-            &self.encryption_pubkey,
-            network_sk,
-            plaintext,
-            self.encryption_nonce,
-        )?))
+    ) -> Result<IoEncryptionRequest, anyhow::Error> {
+        Ok(IoEncryptionRequest {
+            key: self.encryption_pubkey,
+            data: plaintext.to_vec(),
+            nonce: self.encryption_nonce,
+        })
     }
 
     /// client encrypt: network pubkey, client sk
