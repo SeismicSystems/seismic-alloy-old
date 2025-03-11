@@ -1362,8 +1362,10 @@ mod tests {
             gas_limit: 50_000,
             to: Address::default().into(),
             value: U256::from(10e18),
-            encryption_pubkey: EncryptionPublicKey::new([0u8; 33]),
-            message_version: 0,
+            seismic_elements: TxSeismicElements {
+                encryption_pubkey: EncryptionPublicKey::new([0u8; 33]),
+                ..Default::default()
+            },
             input: Bytes::new(),
         };
         test_serde_roundtrip(tx);
