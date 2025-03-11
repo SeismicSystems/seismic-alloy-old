@@ -71,11 +71,7 @@ impl TxSeismicElements {
     }
 
     /// server decrypt: client pubkey, network sk
-    pub fn to_enclave_decrypt_request(
-        &self,
-        ciphertext: &Bytes,
-        network_sk: &SecretKey,
-    ) -> IoDecryptionRequest {
+    pub fn to_enclave_decrypt_request(&self, ciphertext: &Bytes) -> IoDecryptionRequest {
         IoDecryptionRequest {
             key: self.encryption_pubkey,
             data: ciphertext.to_vec(),
@@ -84,11 +80,7 @@ impl TxSeismicElements {
     }
 
     /// server encrypt: client pubkey, network sk
-    pub fn to_enclave_encrypt_request(
-        &self,
-        plaintext: &Bytes,
-        network_sk: &SecretKey,
-    ) -> IoEncryptionRequest {
+    pub fn to_enclave_encrypt_request(&self, plaintext: &Bytes) -> IoEncryptionRequest {
         IoEncryptionRequest {
             key: self.encryption_pubkey,
             data: plaintext.to_vec(),
