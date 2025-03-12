@@ -246,7 +246,7 @@ where
                 let encrypted_input = ecdh_encrypt(
                     &tee_pubkey,
                     &encryption_keypair.secret_key(),
-                    plaintext_input.to_vec(),
+                    &plaintext_input,
                     builder.nonce().unwrap(),
                 )
                 .map_err(|e| {
@@ -265,7 +265,7 @@ where
                         let decrypted_output = ecdh_decrypt(
                             &tee_pubkey,
                             &encryption_keypair.secret_key(),
-                            encrypted_output.to_vec(),
+                            &encrypted_output,
                             builder.nonce().unwrap(),
                         )
                         .map_err(|e| {
@@ -317,7 +317,7 @@ where
                 let encrypted_input = ecdh_encrypt(
                     &tee_pubkey,
                     &encryption_keypair.secret_key(),
-                    plaintext_input.to_vec(),
+                    &plaintext_input,
                     builder.nonce().unwrap(),
                 )
                 .map_err(|e| {
