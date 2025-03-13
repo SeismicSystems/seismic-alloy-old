@@ -9,10 +9,9 @@ use crate::{
 };
 use alloy_consensus::{transaction::TxSeismicElements, TxSeismic};
 use alloy_network::{Ethereum, EthereumWallet, Network, TransactionBuilder};
-use alloy_primitives::{Address, Bytes, FixedBytes, TxKind};
+use alloy_primitives::{Address, Bytes, TxKind};
 use alloy_rpc_types_eth::{TransactionInput, TransactionRequest};
 use alloy_transport::{Transport, TransportErrorKind, TransportResult};
-use seismic_enclave::{ecdh_decrypt, ecdh_encrypt, rand, Keypair, PublicKey, Secp256k1};
 use std::{marker::PhantomData, ops::Deref};
 
 #[cfg(feature = "ws")]
@@ -189,12 +188,6 @@ where
         Self { inner, _pd: PhantomData }
     }
 
-    /// Get the encryption private key
-    pub fn get_encryption_keypair(&self) -> Keypair {
-        let secp = Secp256k1::new();
-        Keypair::new(&secp, &mut rand::thread_rng())
-    }
-
     /// Should encrypt input
     pub fn should_encrypt_input<B: TransactionBuilder<N>>(&self, tx: &B) -> bool {
         tx.input().map_or(false, |input| !input.is_empty()) && tx.nonce().is_some()
@@ -217,43 +210,27 @@ where
     async fn seismic_call(&self, mut tx: SendableTx<N>) -> TransportResult<Bytes> {
         if let Some(builder) = tx.as_mut_builder() {
             if self.should_encrypt_input(builder) {
-                let tee_pubkey = PublicKey::from_slice(
-                    self.inner
-                        .get_tee_pubkey()
-                        .await
-                        .map_err(|e| {
-                            TransportErrorKind::custom_str(&format!(
-                                "Error getting tee pubkey from server: {:?}",
-                                e
-                            ))
-                        })?
-                        .as_slice(),
-                )
-                .map_err(|e| {
-                    TransportErrorKind::custom_str(&format!("Error decoding tee pubkey: {:?}", e))
+                let network_pk = self.inner.get_tee_pubkey().await.map_err(|e| {
+                    TransportErrorKind::custom_str(&format!(
+                        "Error getting tee pubkey from server: {:?}",
+                        e
+                    ))
                 })?;
-                let encryption_keypair = self.get_encryption_keypair();
-
-                // Generate new public/private keypair for this transaction
-                let pubkey_bytes = FixedBytes(encryption_keypair.public_key().serialize());
-                builder.set_seismic_elements(TxSeismicElements {
-                    encryption_pubkey: pubkey_bytes,
-                    ..Default::default()
-                });
+                let encryption_keypair = TxSeismicElements::get_rand_encryption_keypair();
+                let seismic_elements = TxSeismicElements::default()
+                    .with_encryption_pubkey(encryption_keypair.public_key())
+                    .with_encryption_nonce(TxSeismicElements::get_rand_encryption_nonce());
 
                 // Encrypt using recipient's public key and generated private key
                 let plaintext_input = builder.input().unwrap();
-                let encrypted_input = ecdh_encrypt(
-                    &tee_pubkey,
-                    &encryption_keypair.secret_key(),
-                    &plaintext_input,
-                    builder.nonce().unwrap(),
-                )
-                .map_err(|e| {
-                    TransportErrorKind::custom_str(&format!("Error encrypting input: {:?}", e))
-                })?;
+                let encrypted_input = seismic_elements
+                    .client_encrypt(&plaintext_input, &network_pk, &encryption_keypair.secret_key())
+                    .map_err(|e| {
+                        TransportErrorKind::custom_str(&format!("Error encrypting input: {:?}", e))
+                    })?;
 
                 builder.set_input(Bytes::from(encrypted_input));
+                builder.set_seismic_elements(seismic_elements);
 
                 // decrypting output
                 return self
@@ -262,18 +239,18 @@ where
                     .await
                     .and_then(|encrypted_output| {
                         // Decrypt the output using the encryption keypair
-                        let decrypted_output = ecdh_decrypt(
-                            &tee_pubkey,
-                            &encryption_keypair.secret_key(),
-                            &encrypted_output,
-                            builder.nonce().unwrap(),
-                        )
-                        .map_err(|e| {
-                            TransportErrorKind::custom_str(&format!(
-                                "Error decrypting output: {:?}",
-                                e
-                            ))
-                        })?;
+                        let decrypted_output = seismic_elements
+                            .client_decrypt(
+                                &encrypted_output,
+                                &network_pk,
+                                &encryption_keypair.secret_key(),
+                            )
+                            .map_err(|e| {
+                                TransportErrorKind::custom_str(&format!(
+                                    "Error decrypting output: {:?}",
+                                    e
+                                ))
+                            })?;
                         Ok(Bytes::from(decrypted_output))
                     });
             }
@@ -288,42 +265,27 @@ where
     ) -> TransportResult<PendingTransactionBuilder<T, N>> {
         if let Some(builder) = tx.as_mut_builder() {
             if self.should_encrypt_input(builder) {
-                let tee_pubkey = PublicKey::from_slice(
-                    self.inner
-                        .get_tee_pubkey()
-                        .await
-                        .map_err(|e| {
-                            TransportErrorKind::custom_str(&format!(
-                                "Error getting tee pubkey from server: {:?}",
-                                e
-                            ))
-                        })?
-                        .as_slice(),
-                )
-                .map_err(|e| {
-                    TransportErrorKind::custom_str(&format!("Error decoding tee pubkey: {:?}", e))
+                let network_pk = self.inner.get_tee_pubkey().await.map_err(|e| {
+                    TransportErrorKind::custom_str(&format!(
+                        "Error getting tee pubkey from server: {:?}",
+                        e
+                    ))
                 })?;
-                let encryption_keypair = self.get_encryption_keypair();
-
-                // Generate new public/private keypair for this transaction
-                let pubkey_bytes = FixedBytes(encryption_keypair.public_key().serialize());
-                builder.set_seismic_elements(TxSeismicElements {
-                    encryption_pubkey: pubkey_bytes,
-                    ..Default::default()
-                });
+                let encryption_keypair = TxSeismicElements::get_rand_encryption_keypair();
+                let seismic_elements = TxSeismicElements::default()
+                    .with_encryption_pubkey(encryption_keypair.public_key())
+                    .with_encryption_nonce(TxSeismicElements::get_rand_encryption_nonce());
 
                 // Encrypt using recipient's public key and generated private key
                 let plaintext_input = builder.input().unwrap();
-                let encrypted_input = ecdh_encrypt(
-                    &tee_pubkey,
-                    &encryption_keypair.secret_key(),
-                    &plaintext_input,
-                    builder.nonce().unwrap(),
-                )
-                .map_err(|e| {
-                    TransportErrorKind::custom_str(&format!("Error encrypting input: {:?}", e))
-                })?;
+                let encrypted_input = seismic_elements
+                    .client_encrypt(&plaintext_input, &network_pk, &encryption_keypair.secret_key())
+                    .map_err(|e| {
+                        TransportErrorKind::custom_str(&format!("Error encrypting input: {:?}", e))
+                    })?;
+
                 builder.set_input(Bytes::from(encrypted_input));
+                builder.set_seismic_elements(seismic_elements);
             }
         }
         let res = self.inner.send_transaction_internal(tx).await;

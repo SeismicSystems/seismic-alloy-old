@@ -19,6 +19,8 @@ rustdoc-args = ["--cfg", "docsrs"]
 workspace = true
 
 [dependencies]
+seismic-enclave.workspace = true
+
 alloy-eips = { workspace = true, features = ["kzg-sidecar"] }
 alloy-primitives = { workspace = true, features = ["rlp"] }
 alloy-rlp.workspace = true
@@ -48,6 +50,8 @@ derive_more = { workspace = true, features = [
     "into_iterator",
 ], default-features = false }
 auto_impl.workspace = true
+anyhow = "1.0"
+jsonrpsee.workspace = true
 
 
 [dev-dependencies]

@@ -58,7 +58,7 @@ pub mod serde_bincode_compat {
 }
 
 mod seismic;
-pub use seismic::{EncryptionPublicKey, TxSeismic, TxSeismicElements};
+pub use seismic::{TxSeismic, TxSeismicElements};
 
 /// Represents a minimal EVM transaction.
 #[doc(alias = "Tx")]

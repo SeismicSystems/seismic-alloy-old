@@ -14,8 +14,8 @@ use alloy_json_rpc::{RpcError, RpcParam, RpcReturn};
 use alloy_network::{Ethereum, Network};
 use alloy_network_primitives::{BlockResponse, BlockTransactionsKind, ReceiptResponse};
 use alloy_primitives::{
-    hex, Address, BlockHash, BlockNumber, Bytes, FixedBytes, StorageKey, StorageValue, TxHash,
-    B256, U128, U256, U64,
+    hex, Address, BlockHash, BlockNumber, Bytes, StorageKey, StorageValue, TxHash, B256, U128,
+    U256, U64,
 };
 use alloy_rpc_client::{ClientRef, NoParams, PollerBuilder, WeakClient};
 use alloy_rpc_types_eth::{
@@ -24,6 +24,7 @@ use alloy_rpc_types_eth::{
     FilterChanges, Index, Log, SyncStatus,
 };
 use alloy_transport::{BoxTransport, Transport, TransportResult};
+use seismic_enclave::PublicKey;
 use serde_json::value::RawValue;
 use std::borrow::Cow;
 
@@ -1081,7 +1082,7 @@ pub trait Provider<T: Transport + Clone = BoxTransport, N: Network = Ethereum>:
 
     /// Get the tee public key.
     #[inline]
-    fn get_tee_pubkey(&self) -> ProviderCall<T, NoParams, FixedBytes<33>> {
+    fn get_tee_pubkey(&self) -> ProviderCall<T, NoParams, PublicKey> {
         self.client().request_noparams("seismic_getTeePublicKey").into()
     }
 }
