@@ -13,6 +13,7 @@ use core::mem;
 use rand::RngCore;
 use seismic_enclave::{
     constants, ecdh_decrypt, ecdh_encrypt, rand,
+    rpc::SyncEnclaveApiClient,
     tx_io::{IoDecryptionRequest, IoEncryptionRequest},
     Keypair, PublicKey, Secp256k1, SecretKey,
 };
@@ -70,7 +71,7 @@ impl TxSeismicElements {
         rng.next_u64()
     }
 
-    /// server decrypt: client pubkey, network sk
+    /// construct an enclave decrypt request
     pub fn to_enclave_decrypt_request(&self, ciphertext: &Bytes) -> IoDecryptionRequest {
         IoDecryptionRequest {
             key: self.encryption_pubkey,
@@ -79,13 +80,35 @@ impl TxSeismicElements {
         }
     }
 
-    /// server encrypt: client pubkey, network sk
+    /// construct an enclave encrypt request
     pub fn to_enclave_encrypt_request(&self, plaintext: &Bytes) -> IoEncryptionRequest {
         IoEncryptionRequest {
             key: self.encryption_pubkey,
             data: plaintext.to_vec(),
             nonce: self.encryption_nonce.into(),
         }
+    }
+
+    /// decrypt a message using the enclave
+    pub fn server_decrypt<C: SyncEnclaveApiClient>(
+        &self,
+        enclave_client: &C,
+        ciphertext: &Bytes,
+    ) -> Result<Bytes, jsonrpsee::core::ClientError> {
+        let request = self.to_enclave_decrypt_request(ciphertext);
+        let response = enclave_client.decrypt(request)?;
+        Ok(Bytes::from(response.decrypted_data))
+    }
+
+    /// encrypt a message using the enclave
+    pub fn server_encrypt<C: SyncEnclaveApiClient>(
+        &self,
+        enclave_client: &C,
+        plaintext: &Bytes,
+    ) -> Result<Bytes, jsonrpsee::core::ClientError> {
+        let request = self.to_enclave_encrypt_request(plaintext);
+        let response = enclave_client.encrypt(request)?;
+        Ok(Bytes::from(response.encrypted_data))
     }
 
     /// client encrypt: network pubkey, client sk
