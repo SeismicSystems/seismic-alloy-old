@@ -95,6 +95,9 @@ impl TxSeismicElements {
         enclave_client: &C,
         ciphertext: &Bytes,
     ) -> Result<Bytes, jsonrpsee::core::ClientError> {
+        if ciphertext.is_empty() {
+            return Ok(ciphertext.clone());
+        }
         let request = self.to_enclave_decrypt_request(ciphertext);
         let response = enclave_client.decrypt(request)?;
         Ok(Bytes::from(response.decrypted_data))
@@ -106,6 +109,9 @@ impl TxSeismicElements {
         enclave_client: &C,
         plaintext: &Bytes,
     ) -> Result<Bytes, jsonrpsee::core::ClientError> {
+        if plaintext.is_empty() {
+            return Ok(plaintext.clone());
+        }
         let request = self.to_enclave_encrypt_request(plaintext);
         let response = enclave_client.encrypt(request)?;
         Ok(Bytes::from(response.encrypted_data))
@@ -739,6 +745,7 @@ mod tests {
     use alloy_primitives::{b256, hex, Address, PrimitiveSignature};
     use derive_more::FromStr;
     use k256::ecdsa::SigningKey;
+    use seismic_enclave::MockEnclaveClient;
 
     use super::*;
 
@@ -882,5 +889,15 @@ mod tests {
         println!("typed_data: {:?}", typed_data);
         let decoded = TxSeismic::eip712_decode(&typed_data).unwrap();
         assert_eq!(decoded, tx);
+    }
+
+    #[test]
+    fn test_server_encrypt_empty_bytes() {
+        let seismic_elements = TxSeismicElements::default();
+        let empty_bytes = Bytes::new();
+        let mock_enclave_client = MockEnclaveClient {};
+        let result = seismic_elements.server_encrypt(&mock_enclave_client, &empty_bytes);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), Bytes::new());
     }
 }
