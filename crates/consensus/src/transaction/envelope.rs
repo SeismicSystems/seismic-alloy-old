@@ -1353,6 +1353,8 @@ mod tests {
     #[test]
     #[cfg(feature = "serde")]
     fn test_serde_roundtrip_seismic() {
+        use alloy_primitives::aliases::U96;
+
         let encryption_keypair = TxSeismicElements::get_rand_encryption_keypair();
         let encryption_pubkey = encryption_keypair.public_key();
 
@@ -1366,7 +1368,7 @@ mod tests {
             seismic_elements: TxSeismicElements {
                 encryption_pubkey,
                 message_version: 1,
-                encryption_nonce: 1,
+                encryption_nonce: U96::from(1),
             },
             input: Bytes::new(),
         };

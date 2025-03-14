@@ -27,7 +27,13 @@ use seismic_enclave::{
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct TxSeismicElements {
     /// The public key we will decrypt to
-    #[cfg_attr(feature = "serde", serde(alias = "encryptionPubkey"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            alias = "encryptionPubkey",
+            deserialize_with = "alloy_serde::encryption::pubkey_with_prefix_deserialize"
+        )
+    )]
     pub encryption_pubkey: PublicKey,
 
     /// The nonce for the transaction
@@ -845,7 +851,7 @@ mod tests {
             value: U256::from(1000000000000000u64),
             seismic_elements: TxSeismicElements {
                 encryption_pubkey: TxSeismicElements::get_rand_encryption_keypair().public_key(),
-                encryption_nonce: 1,
+                encryption_nonce: U96::from(1),
                 message_version: 2,
             },
             input:  hex!("a22cb4650000000000000000000000005eee75727d804a2b13038928d36f8b188945a57a0000000000000000000000000000000000000000000000000000000000000000").into(),
@@ -889,7 +895,7 @@ mod tests {
             seismic_elements: TxSeismicElements {
                 encryption_pubkey: TxSeismicElements::get_rand_encryption_keypair().public_key(),
                 message_version: u8::max_value(),
-                encryption_nonce: u64::max_value(),
+                encryption_nonce: U96::MAX,
             },
             input: Bytes::default(),
         };
@@ -897,6 +903,18 @@ mod tests {
         println!("typed_data: {:?}", typed_data);
         let decoded = TxSeismic::eip712_decode(&typed_data).unwrap();
         assert_eq!(decoded, tx);
+    }
+
+    #[test]
+    fn test_pubkey_with_prefix_hex() {
+        let without_prefix_pubkey =
+            "\"03c5e6d6b9916ee954b9724be6e31623c80c1fbe598aac48dcc075a7023077d44b\"";
+        let key: PublicKey = serde_json::from_str(without_prefix_pubkey).unwrap();
+
+        let raw = "{\"encryptionPubkey\":\"0x03c5e6d6b9916ee954b9724be6e31623c80c1fbe598aac48dcc075a7023077d44b\",\"encryptionNonce\":\"0x5ca801ecf9742c75e30cb9ed\",\"messageVersion\":\"0x0\"}";
+
+        let with_prefix_pubkey: TxSeismicElements = serde_json::from_str(raw).unwrap();
+        assert_eq!(with_prefix_pubkey.encryption_pubkey, key);
     }
 
     #[test]
