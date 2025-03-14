@@ -1,17 +1,5 @@
 //! Seismic provider for websocket requests
-use crate::{
-    fillers::{
-        FillProvider, JoinFill, NonceFiller, RecommendedFillers, SimpleNonceManager, WalletFiller,
-    },
-    Identity, PendingTransactionBuilder, Provider, ProviderBuilder, ProviderLayer, RootProvider,
-    SendableTx,
-};
-use alloy_consensus::{transaction::TxSeismicElements, TxSeismic};
-use alloy_network::{Ethereum, EthereumWallet, Network, TransactionBuilder};
-use alloy_primitives::{Address, Bytes, TxKind};
-use alloy_rpc_types_eth::{TransactionInput, TransactionRequest};
-use alloy_transport::{Transport, TransportErrorKind, TransportResult};
-use std::{marker::PhantomData, ops::Deref};
+use crate::{ProviderBuilder, RootProvider};
 
 /// Seismic unsigned websocket provider
 pub type SeismicUnsignedWsProviderInner = RootProvider<alloy_transport::BoxTransport>;

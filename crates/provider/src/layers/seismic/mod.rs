@@ -1,14 +1,7 @@
 //! A provider layer that uses for filling sesimic transactions
-use crate::{
-    PendingTransactionBuilder, Provider, ProviderLayer, RootProvider,
-    SendableTx,
-};
-use alloy_consensus::{transaction::TxSeismicElements, TxSeismic};
-use alloy_network::{Network, TransactionBuilder};
+use alloy_consensus::transaction::TxSeismic;
 use alloy_primitives::{Address, Bytes, TxKind};
 use alloy_rpc_types_eth::{TransactionInput, TransactionRequest};
-use alloy_transport::{Transport, TransportErrorKind, TransportResult};
-use std::marker::PhantomData;
 
 pub mod provider;
 pub mod layer;

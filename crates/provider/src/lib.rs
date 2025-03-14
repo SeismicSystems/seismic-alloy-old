@@ -41,7 +41,10 @@ pub use heart::{
 };
 
 pub mod layers;
-pub use layers::seismic::*;
+#[cfg(feature = "reqwest")]
+pub use layers::seismic::{SeismicSignedProvider, SeismicUnsignedProvider};
+#[cfg(feature = "ws")]
+pub use layers::seismic::SeismicUnsignedWsProvider;
 
 mod provider;
 pub use provider::{

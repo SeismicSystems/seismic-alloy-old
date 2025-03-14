@@ -30,7 +30,7 @@ where
     }
 
     /// Should encrypt input
-    pub fn should_encrypt_input<B: TransactionBuilder<N>>(&self, tx: &B) -> bool {
+    pub (crate) fn should_encrypt_input<B: TransactionBuilder<N>>(&self, tx: &B) -> bool {
         tx.input().map_or(false, |input| !input.is_empty()) && tx.nonce().is_some()
     }
 }

@@ -8,7 +8,7 @@ use crate::layers::seismic::provider::SeismicProvider;
 
 /// Seismic layer
 #[derive(Debug, Clone)]
-pub struct SeismicLayer {}
+pub (crate) struct SeismicLayer {}
 
 impl<P, T, N> ProviderLayer<P, T, N> for SeismicLayer
 where
