@@ -8,8 +8,7 @@ use crate::{
 use alloy_network::{Ethereum, EthereumWallet};
 use std::ops::Deref;
 
-use crate::layers::seismic::layer::SeismicLayer;
-use crate::layers::seismic::provider::SeismicProvider;
+use crate::layers::seismic::{layer::SeismicLayer, provider::SeismicProvider};
 
 /// Seismic provider
 pub type SeismicSignedProviderInner = FillProvider<
@@ -167,7 +166,6 @@ pub mod test_utils {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use alloy_network::{EthereumWallet, TransactionBuilder};
@@ -176,8 +174,10 @@ mod tests {
     use alloy_rpc_types_eth::{TransactionInput, TransactionRequest};
     use alloy_signer_local::PrivateKeySigner;
 
-    use crate::{Provider, SeismicSignedProvider, SeismicUnsignedProvider};
-    use crate::{layers::seismic::http::test_utils::ContractTestContext, SendableTx};
+    use crate::{
+        layers::seismic::http::test_utils::ContractTestContext, Provider, SeismicSignedProvider,
+        SeismicUnsignedProvider, SendableTx,
+    };
 
     #[tokio::test]
     async fn test_seismic_signed_call() {
@@ -266,5 +266,4 @@ mod tests {
         let wallet = EthereumWallet::from(bob.clone());
         wallet
     }
-
 }

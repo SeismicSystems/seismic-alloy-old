@@ -1,8 +1,5 @@
 //! Seismic provider for encrypting transactions and decrypting responses
-use crate::{
-    PendingTransactionBuilder, Provider,  RootProvider,
-    SendableTx,
-};
+use crate::{PendingTransactionBuilder, Provider, RootProvider, SendableTx};
 use alloy_consensus::transaction::TxSeismicElements;
 use alloy_network::{Network, TransactionBuilder};
 use alloy_primitives::Bytes;
@@ -25,12 +22,12 @@ where
     N: Network,
 {
     /// Create a new seismic provider
-    pub (crate) fn new(inner: P) -> Self {
+    pub(crate) fn new(inner: P) -> Self {
         Self { inner, _pd: PhantomData }
     }
 
     /// Should encrypt input
-    pub (crate) fn should_encrypt_input<B: TransactionBuilder<N>>(&self, tx: &B) -> bool {
+    pub(crate) fn should_encrypt_input<B: TransactionBuilder<N>>(&self, tx: &B) -> bool {
         tx.input().map_or(false, |input| !input.is_empty()) && tx.nonce().is_some()
     }
 }

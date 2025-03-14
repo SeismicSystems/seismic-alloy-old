@@ -3,8 +3,8 @@ use alloy_consensus::transaction::TxSeismic;
 use alloy_primitives::{Address, Bytes, TxKind};
 use alloy_rpc_types_eth::{TransactionInput, TransactionRequest};
 
-pub mod provider;
 pub mod layer;
+pub mod provider;
 
 #[cfg(feature = "ws")]
 pub mod ws;
@@ -29,9 +29,10 @@ pub fn build_seismic_tx(plaintext: Bytes, to: TxKind, from: Address) -> Transact
 
 #[cfg(test)]
 mod tests {
+    use crate::{
+        builder::ProviderBuilder, layers::seismic::layer::SeismicLayer, provider::Provider,
+    };
     use alloy_network::Ethereum;
-    use crate::layers::seismic::layer::SeismicLayer;
-    use crate::{provider::Provider, builder::ProviderBuilder};
 
     #[tokio::test]
     async fn test_get_tee_pubkey() {

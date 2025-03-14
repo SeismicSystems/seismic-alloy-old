@@ -1,4 +1,3 @@
-
 //! Seismic middlware for encrypting transactions and decrypting responses
 use crate::{Provider, ProviderLayer};
 use alloy_network::Network;
@@ -8,7 +7,7 @@ use crate::layers::seismic::provider::SeismicProvider;
 
 /// Seismic layer
 #[derive(Debug, Clone)]
-pub (crate) struct SeismicLayer {}
+pub(crate) struct SeismicLayer {}
 
 impl<P, T, N> ProviderLayer<P, T, N> for SeismicLayer
 where
