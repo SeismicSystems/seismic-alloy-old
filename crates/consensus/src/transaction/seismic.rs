@@ -6,13 +6,16 @@ use alloy_eips::{
     eip7702::SignedAuthorization,
 };
 use alloy_primitives::{
-    hex, keccak256, Address, Bytes, ChainId, PrimitiveSignature as Signature, TxKind, B256, U256,
+    aliases::U96, hex, keccak256, Address, Bytes, ChainId, PrimitiveSignature as Signature, TxKind,
+    B256, U256,
 };
 use alloy_rlp::{BufMut, Decodable, Encodable};
 use core::mem;
 use rand::RngCore;
 use seismic_enclave::{
-    constants, ecdh_decrypt, ecdh_encrypt, rand,
+    constants, ecdh_decrypt, ecdh_encrypt,
+    nonce::Nonce,
+    rand,
     rpc::SyncEnclaveApiClient,
     tx_io::{IoDecryptionRequest, IoEncryptionRequest},
     Keypair, PublicKey, Secp256k1, SecretKey,
@@ -28,11 +31,8 @@ pub struct TxSeismicElements {
     pub encryption_pubkey: PublicKey,
 
     /// The nonce for the transaction
-    #[cfg_attr(
-        feature = "serde",
-        serde(alias = "encryptionNonce", with = "alloy_serde::quantity")
-    )]
-    pub encryption_nonce: u64,
+    #[cfg_attr(feature = "serde", serde(alias = "encryptionNonce"))]
+    pub encryption_nonce: U96,
 
     /// The EIP712 version of the transaction when the user submitted it using signTypedDataV4.
     /// A value of 0 means the transaction was not signed using EIP712
@@ -54,7 +54,7 @@ impl TxSeismicElements {
     }
 
     /// Set the encryption nonce
-    pub fn with_encryption_nonce(mut self, encryption_nonce: u64) -> Self {
+    pub fn with_encryption_nonce(mut self, encryption_nonce: U96) -> Self {
         self.encryption_nonce = encryption_nonce;
         self
     }
@@ -66,9 +66,17 @@ impl TxSeismicElements {
     }
 
     /// Get a new encryption nonce
-    pub fn get_rand_encryption_nonce() -> u64 {
+    pub fn get_rand_encryption_nonce() -> U96 {
         let mut rng = rand::thread_rng();
-        rng.next_u64()
+        // Generate a random U96 value
+        let mut bytes = [0u8; 12]; // 96 bits = 12 bytes
+        rng.fill_bytes(&mut bytes);
+        U96::from_be_bytes(bytes)
+    }
+
+    /// Convert U96 to Nonce
+    pub fn get_enclave_nonce(self) -> Nonce {
+        self.encryption_nonce.to_be_bytes().into()
     }
 
     /// construct an enclave decrypt request
@@ -76,7 +84,7 @@ impl TxSeismicElements {
         IoDecryptionRequest {
             key: self.encryption_pubkey,
             data: ciphertext.to_vec(),
-            nonce: self.encryption_nonce.into(),
+            nonce: self.get_enclave_nonce(),
         }
     }
 
@@ -85,7 +93,7 @@ impl TxSeismicElements {
         IoEncryptionRequest {
             key: self.encryption_pubkey,
             data: plaintext.to_vec(),
-            nonce: self.encryption_nonce.into(),
+            nonce: self.get_enclave_nonce(),
         }
     }
 
@@ -124,7 +132,7 @@ impl TxSeismicElements {
         network_pk: &PublicKey,
         client_sk: &SecretKey,
     ) -> Result<Bytes, anyhow::Error> {
-        Ok(Bytes::from(ecdh_encrypt(network_pk, client_sk, plaintext, self.encryption_nonce)?))
+        Ok(Bytes::from(ecdh_encrypt(network_pk, client_sk, plaintext, self.get_enclave_nonce())?))
     }
 
     /// client decrypt: network pubkey, client sk
@@ -134,7 +142,7 @@ impl TxSeismicElements {
         network_pk: &PublicKey,
         client_sk: &SecretKey,
     ) -> Result<Bytes, anyhow::Error> {
-        Ok(Bytes::from(ecdh_decrypt(network_pk, client_sk, ciphertext, self.encryption_nonce)?))
+        Ok(Bytes::from(ecdh_decrypt(network_pk, client_sk, ciphertext, self.get_enclave_nonce())?))
     }
 }
 
@@ -146,7 +154,7 @@ impl Default for TxSeismicElements {
                     .unwrap(),
             )
             .unwrap(),
-            encryption_nonce: 0,
+            encryption_nonce: U96::ZERO,
             message_version: 0,
         }
     }
@@ -167,7 +175,7 @@ impl<'a> arbitrary::Arbitrary<'a> for TxSeismicElements {
                 return Ok(Self {
                     encryption_pubkey: pubkey,
                     message_version: u8::arbitrary(u)?,
-                    encryption_nonce: u64::arbitrary(u)?,
+                    encryption_nonce: U96::arbitrary(u)?,
                 });
             }
 
@@ -178,7 +186,7 @@ impl<'a> arbitrary::Arbitrary<'a> for TxSeismicElements {
         Ok(Self {
             encryption_pubkey: Self::default().encryption_pubkey,
             message_version: u8::arbitrary(u)?,
-            encryption_nonce: u64::arbitrary(u)?,
+            encryption_nonce: U96::arbitrary(u)?,
         })
     }
 }

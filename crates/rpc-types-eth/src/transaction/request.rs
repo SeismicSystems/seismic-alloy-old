@@ -1216,7 +1216,7 @@ pub struct BuildTransactionErr<T = TransactionRequest> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use alloy_primitives::b256;
+    use alloy_primitives::{b256, hex};
     use alloy_serde::WithOtherFields;
     use assert_matches::assert_matches;
     use similar_asserts::assert_eq;
