@@ -12,7 +12,7 @@ use crate::layers::seismic::{layer::SeismicLayer, provider::SeismicProvider};
 
 /// Seismic provider
 pub type SeismicSignedProviderInner = FillProvider<
-    JoinFill<Identity, NonceFiller>,
+    JoinFill<Identity, NonceFiller<SimpleNonceManager>>,
     SeismicProvider<
         FillProvider<
             JoinFill<
@@ -43,7 +43,7 @@ impl SeismicSignedProvider {
 
         // Create nonce management layer
         let nonce_layer: JoinFill<Identity, NonceFiller<SimpleNonceManager>> =
-            JoinFill::new(Identity, NonceFiller::default());
+            JoinFill::new(Identity, NonceFiller::<SimpleNonceManager>::default());
 
         // Build and return the provider
         let inner = ProviderBuilder::new()
@@ -65,7 +65,7 @@ impl Deref for SeismicSignedProvider {
 
 /// Seismic unsigned provider
 pub type SeismicUnsignedProviderInner = FillProvider<
-    JoinFill<Identity, NonceFiller>,
+    JoinFill<Identity, NonceFiller<SimpleNonceManager>>,
     SeismicProvider<
         FillProvider<
             JoinFill<<Ethereum as RecommendedFillers>::RecommendedFillers, Identity>,
@@ -90,7 +90,7 @@ impl SeismicUnsignedProvider {
         // Create wallet layer with recommended fillers
         let wallet_layer = JoinFill::new(Ethereum::recommended_fillers(), Identity);
         let nonce_layer: JoinFill<Identity, NonceFiller<SimpleNonceManager>> =
-            JoinFill::new(Identity, NonceFiller::default());
+            JoinFill::new(Identity, NonceFiller::<SimpleNonceManager>::default());
 
         let inner = ProviderBuilder::new()
             .network::<Ethereum>()
