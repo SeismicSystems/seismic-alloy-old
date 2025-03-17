@@ -751,7 +751,7 @@ pub(super) mod serde_bincode_compat {
 mod tests {
     use alloy_primitives::{b256, hex, Address, PrimitiveSignature};
     use derive_more::FromStr;
-    use k256::{ecdsa::SigningKey, elliptic_curve::generic_array::GenericArray};
+    use k256::ecdsa::SigningKey;
     use seismic_enclave::MockEnclaveClient;
 
     use super::*;

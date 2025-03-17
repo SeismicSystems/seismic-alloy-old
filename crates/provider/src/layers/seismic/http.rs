@@ -112,15 +112,15 @@ impl Deref for SeismicUnsignedProvider {
 
 #[cfg(test)]
 mod tests {
-    use alloy_network::{EthereumWallet, TransactionBuilder};
+    use alloy_network::{Ethereum, EthereumWallet, TransactionBuilder};
     use alloy_node_bindings::{Anvil, AnvilInstance};
     use alloy_primitives::{Address, Bytes, TxKind};
     use alloy_rpc_types_eth::{TransactionInput, TransactionRequest};
     use alloy_signer_local::PrivateKeySigner;
 
     use crate::{
-        layers::seismic::test_utils::ContractTestContext, Provider, ProviderBuilder,
-        SeismicSignedProvider, SeismicUnsignedProvider, SendableTx,
+        layers::seismic::{layer::SeismicLayer, test_utils::ContractTestContext},
+        Provider, ProviderBuilder, SeismicSignedProvider, SeismicUnsignedProvider, SendableTx,
     };
 
     #[tokio::test]
