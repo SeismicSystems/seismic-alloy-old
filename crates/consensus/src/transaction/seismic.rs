@@ -6,13 +6,16 @@ use alloy_eips::{
     eip7702::SignedAuthorization,
 };
 use alloy_primitives::{
-    hex, keccak256, Address, Bytes, ChainId, PrimitiveSignature as Signature, TxKind, B256, U256,
+    aliases::U96, hex, keccak256, Address, Bytes, ChainId, PrimitiveSignature as Signature, TxKind,
+    B256, U256,
 };
 use alloy_rlp::{BufMut, Decodable, Encodable};
 use core::mem;
 use rand::RngCore;
 use seismic_enclave::{
-    constants, ecdh_decrypt, ecdh_encrypt, rand,
+    constants, ecdh_decrypt, ecdh_encrypt,
+    nonce::Nonce,
+    rand,
     rpc::SyncEnclaveApiClient,
     tx_io::{IoDecryptionRequest, IoEncryptionRequest},
     Keypair, PublicKey, Secp256k1, SecretKey,
@@ -24,15 +27,18 @@ use seismic_enclave::{
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct TxSeismicElements {
     /// The public key we will decrypt to
-    #[cfg_attr(feature = "serde", serde(alias = "encryptionPubkey"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            alias = "encryptionPubkey",
+            deserialize_with = "alloy_serde::encryption::pubkey_with_prefix_deserialize"
+        )
+    )]
     pub encryption_pubkey: PublicKey,
 
     /// The nonce for the transaction
-    #[cfg_attr(
-        feature = "serde",
-        serde(alias = "encryptionNonce", with = "alloy_serde::quantity")
-    )]
-    pub encryption_nonce: u64,
+    #[cfg_attr(feature = "serde", serde(alias = "encryptionNonce"))]
+    pub encryption_nonce: U96,
 
     /// The EIP712 version of the transaction when the user submitted it using signTypedDataV4.
     /// A value of 0 means the transaction was not signed using EIP712
@@ -54,7 +60,7 @@ impl TxSeismicElements {
     }
 
     /// Set the encryption nonce
-    pub fn with_encryption_nonce(mut self, encryption_nonce: u64) -> Self {
+    pub fn with_encryption_nonce(mut self, encryption_nonce: U96) -> Self {
         self.encryption_nonce = encryption_nonce;
         self
     }
@@ -66,9 +72,17 @@ impl TxSeismicElements {
     }
 
     /// Get a new encryption nonce
-    pub fn get_rand_encryption_nonce() -> u64 {
+    pub fn get_rand_encryption_nonce() -> U96 {
         let mut rng = rand::thread_rng();
-        rng.next_u64()
+        // Generate a random U96 value
+        let mut bytes = [0u8; 12]; // 96 bits = 12 bytes
+        rng.fill_bytes(&mut bytes);
+        U96::from_be_bytes(bytes)
+    }
+
+    /// Convert U96 to Nonce
+    pub fn get_enclave_nonce(self) -> Nonce {
+        self.encryption_nonce.to_be_bytes().into()
     }
 
     /// construct an enclave decrypt request
@@ -76,7 +90,7 @@ impl TxSeismicElements {
         IoDecryptionRequest {
             key: self.encryption_pubkey,
             data: ciphertext.to_vec(),
-            nonce: self.encryption_nonce.into(),
+            nonce: self.get_enclave_nonce(),
         }
     }
 
@@ -85,7 +99,7 @@ impl TxSeismicElements {
         IoEncryptionRequest {
             key: self.encryption_pubkey,
             data: plaintext.to_vec(),
-            nonce: self.encryption_nonce.into(),
+            nonce: self.get_enclave_nonce(),
         }
     }
 
@@ -124,7 +138,7 @@ impl TxSeismicElements {
         network_pk: &PublicKey,
         client_sk: &SecretKey,
     ) -> Result<Bytes, anyhow::Error> {
-        Ok(Bytes::from(ecdh_encrypt(network_pk, client_sk, plaintext, self.encryption_nonce)?))
+        Ok(Bytes::from(ecdh_encrypt(network_pk, client_sk, plaintext, self.get_enclave_nonce())?))
     }
 
     /// client decrypt: network pubkey, client sk
@@ -134,7 +148,7 @@ impl TxSeismicElements {
         network_pk: &PublicKey,
         client_sk: &SecretKey,
     ) -> Result<Bytes, anyhow::Error> {
-        Ok(Bytes::from(ecdh_decrypt(network_pk, client_sk, ciphertext, self.encryption_nonce)?))
+        Ok(Bytes::from(ecdh_decrypt(network_pk, client_sk, ciphertext, self.get_enclave_nonce())?))
     }
 }
 
@@ -146,7 +160,7 @@ impl Default for TxSeismicElements {
                     .unwrap(),
             )
             .unwrap(),
-            encryption_nonce: 0,
+            encryption_nonce: U96::ZERO,
             message_version: 0,
         }
     }
@@ -167,7 +181,7 @@ impl<'a> arbitrary::Arbitrary<'a> for TxSeismicElements {
                 return Ok(Self {
                     encryption_pubkey: pubkey,
                     message_version: u8::arbitrary(u)?,
-                    encryption_nonce: u64::arbitrary(u)?,
+                    encryption_nonce: U96::arbitrary(u)?,
                 });
             }
 
@@ -178,34 +192,29 @@ impl<'a> arbitrary::Arbitrary<'a> for TxSeismicElements {
         Ok(Self {
             encryption_pubkey: Self::default().encryption_pubkey,
             message_version: u8::arbitrary(u)?,
-            encryption_nonce: u64::arbitrary(u)?,
+            encryption_nonce: U96::arbitrary(u)?,
         })
     }
 }
 
 impl Encodable for TxSeismicElements {
     fn encode(&self, out: &mut dyn BufMut) {
-        out.put_slice(&self.encryption_pubkey.serialize());
+        self.encryption_pubkey.serialize().encode(out);
         self.encryption_nonce.encode(out);
         self.message_version.encode(out);
     }
 
     fn length(&self) -> usize {
-        constants::PUBLIC_KEY_SIZE + self.encryption_nonce.length() + self.message_version.length()
+        self.encryption_pubkey.serialize().length()
+            + self.encryption_nonce.length()
+            + self.message_version.length()
     }
 }
 
 impl Decodable for TxSeismicElements {
     fn decode(buf: &mut &[u8]) -> alloy_rlp::Result<Self> {
         // First read the public key bytes
-        let mut pubkey_bytes = [0u8; constants::PUBLIC_KEY_SIZE];
-        if buf.len() < constants::PUBLIC_KEY_SIZE {
-            return Err(alloy_rlp::Error::InputTooShort);
-        }
-        pubkey_bytes.copy_from_slice(&buf[..constants::PUBLIC_KEY_SIZE]);
-
-        // Advance the buffer cursor past the public key bytes
-        *buf = &buf[constants::PUBLIC_KEY_SIZE..];
+        let pubkey_bytes: [u8; constants::PUBLIC_KEY_SIZE] = Decodable::decode(buf)?;
 
         // Now decode the message version and construct the result
         Ok(Self {
@@ -360,10 +369,8 @@ impl TxSeismic {
     /// Decodes a [`TypedData`] into a [`TxSeismic`].
     pub fn eip712_decode(typed_data: &TypedData) -> Eip712Result<Self> {
         // Extract the `message` field from TypedData (JSON format)
-        println!("eip712_decode typed_data: {:?}", typed_data);
         let message = serde_json::to_value(&typed_data.message)
             .map_err(|_| Eip712Error::DecodeError("Failed to serialize message".to_string()))?;
-        println!("eip712_decode message: {:?}", message);
         // Deserialize JSON `message` into `TxSeismic`
         let mut tx: TxSeismic = serde_json::from_value(message)
             .map_err(|_| Eip712Error::DecodeError("Failed to deserialize message".to_string()))?;
@@ -412,8 +419,8 @@ impl RlpEcdsaTx for TxSeismic {
         self.gas_limit.encode(out);
         self.to.encode(out);
         self.value.encode(out);
-        self.input.encode(out);
         self.seismic_elements.encode(out);
+        self.input.encode(out);
     }
 
     /// Decodes the inner [TxSeismic] fields from RLP bytes.
@@ -438,8 +445,8 @@ impl RlpEcdsaTx for TxSeismic {
             gas_limit: Decodable::decode(buf)?,
             to: Decodable::decode(buf)?,
             value: Decodable::decode(buf)?,
-            input: Decodable::decode(buf)?,
             seismic_elements: Decodable::decode(buf)?,
+            input: Decodable::decode(buf)?,
         })
     }
 }
@@ -759,7 +766,7 @@ mod tests {
 
     #[test]
     fn test_encode_decode_seismic() {
-        let hash: B256 = b256!("c43c63e0f625efd30c54161b8b9e7feae2bb30382777a30bef7d0e77930733e6");
+        let hash: B256 = b256!("718b6582b8a0bce0ca87d67ce553d49e7cc228d58b1a63ee1ee6ededee699e63");
 
         let tx = TxSeismic {
             chain_id: 4u64,
@@ -790,7 +797,7 @@ mod tests {
             let signer = decoded.recover_signer().unwrap();
             assert_eq!(
                 signer,
-                Address::from_str("0x0434416b2fbe17e86b9171ee76f55062c8679135").unwrap()
+                Address::from_str("0x166cd796821ac9f47605dcf63c313f5a0df355e7").unwrap()
             );
         }
     }
@@ -837,13 +844,13 @@ mod tests {
             value: U256::from(1000000000000000u64),
             seismic_elements: TxSeismicElements {
                 encryption_pubkey: TxSeismicElements::get_rand_encryption_keypair().public_key(),
-                encryption_nonce: 1,
+                encryption_nonce: U96::from(1),
                 message_version: 2,
             },
             input:  hex!("a22cb4650000000000000000000000005eee75727d804a2b13038928d36f8b188945a57a0000000000000000000000000000000000000000000000000000000000000000").into(),
         };
+        println!("tx: {:?}", tx);
         let typed_data = tx.eip712_to_type_data();
-        println!("typed_data: {:?}", typed_data);
         let decoded = TxSeismic::eip712_decode(&typed_data).unwrap();
         assert_eq!(decoded, tx);
 
@@ -857,6 +864,7 @@ mod tests {
         );
 
         let signed = tx.clone().into_signed(sig);
+        println!("signed tx : {:?}", signed.tx());
         assert_eq!(signed.tx(), &tx);
         assert_eq!(signed.signature(), &sig);
         assert_ne!(*signed.hash(), signature_hash);
@@ -881,7 +889,7 @@ mod tests {
             seismic_elements: TxSeismicElements {
                 encryption_pubkey: TxSeismicElements::get_rand_encryption_keypair().public_key(),
                 message_version: u8::max_value(),
-                encryption_nonce: u64::max_value(),
+                encryption_nonce: U96::MAX,
             },
             input: Bytes::default(),
         };
@@ -892,6 +900,18 @@ mod tests {
 
         let signature_hash = decoded.eip712_signature_hash();
         println!("signature_hash: {:?}", signature_hash);
+    }
+
+    #[test]
+    fn test_pubkey_with_prefix_hex() {
+        let without_prefix_pubkey =
+            "\"03c5e6d6b9916ee954b9724be6e31623c80c1fbe598aac48dcc075a7023077d44b\"";
+        let key: PublicKey = serde_json::from_str(without_prefix_pubkey).unwrap();
+
+        let raw = "{\"encryptionPubkey\":\"0x03c5e6d6b9916ee954b9724be6e31623c80c1fbe598aac48dcc075a7023077d44b\",\"encryptionNonce\":\"0x5ca801ecf9742c75e30cb9ed\",\"messageVersion\":\"0x0\"}";
+
+        let with_prefix_pubkey: TxSeismicElements = serde_json::from_str(raw).unwrap();
+        assert_eq!(with_prefix_pubkey.encryption_pubkey, key);
     }
 
     #[test]
