@@ -152,62 +152,6 @@ impl TxSeismicElements {
     }
 }
 
-impl RlpEcdsaTx for TxSeismicElements {
-    const DEFAULT_TX_TYPE: u8 = { Self::tx_type() as u8 };
-
-    /// Outputs the length of the transaction's fields, without a RLP header.
-    fn rlp_encoded_fields_length(&self) -> usize {
-        self.chain_id.length()
-            + self.nonce.length()
-            + self.gas_price.length()
-            + self.gas_limit.length()
-            + self.to.length()
-            + self.value.length()
-            + self.seismic_elements.length()
-            + self.input.length()
-    }
-
-    /// Encodes only the transaction's fields into the desired buffer, without
-    /// a RLP header.
-    fn rlp_encode_fields(&self, out: &mut dyn alloy_rlp::BufMut) {
-        self.chain_id.encode(out);
-        self.nonce.encode(out);
-        self.gas_price.encode(out);
-        self.gas_limit.encode(out);
-        self.to.encode(out);
-        self.value.encode(out);
-        self.seismic_elements.encode(out);
-        self.input.encode(out);
-    }
-
-    /// Decodes the inner [TxSeismic] fields from RLP bytes.
-    ///
-    /// NOTE: This assumes a RLP header has already been decoded, and _just_
-    /// decodes the following RLP fields in the following order:
-    ///
-    /// - `chain_id`
-    /// - `nonce`
-    /// - `max_priority_fee_per_gas`
-    /// - `max_fee_per_gas`
-    /// - `gas_limit`
-    /// - `to`
-    /// - `value`
-    /// - `data` (`input`)
-    /// - `encryption_pubkey`
-    fn rlp_decode_fields(buf: &mut &[u8]) -> alloy_rlp::Result<Self> {
-        Ok(Self {
-            chain_id: Decodable::decode(buf)?,
-            nonce: Decodable::decode(buf)?,
-            gas_price: Decodable::decode(buf)?,
-            gas_limit: Decodable::decode(buf)?,
-            to: Decodable::decode(buf)?,
-            value: Decodable::decode(buf)?,
-            seismic_elements: Decodable::decode(buf)?,
-            input: Decodable::decode(buf)?,
-        })
-    }
-}
-
 impl Default for TxSeismicElements {
     fn default() -> Self {
         Self {
