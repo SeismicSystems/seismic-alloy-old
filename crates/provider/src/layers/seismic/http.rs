@@ -119,8 +119,8 @@ mod tests {
     use alloy_signer_local::PrivateKeySigner;
 
     use crate::{
-        layers::seismic::http::test_utils::ContractTestContext, Provider, SeismicSignedProvider,
-        SeismicUnsignedProvider, SendableTx,
+        layers::seismic::test_utils::ContractTestContext, Provider, ProviderBuilder,
+        SeismicSignedProvider, SeismicUnsignedProvider, SendableTx,
     };
 
     #[tokio::test]
