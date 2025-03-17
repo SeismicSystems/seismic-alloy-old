@@ -8,6 +8,5 @@ where
     D: Deserializer<'de>,
 {
     let bytes = FixedBytes::<{ constants::PUBLIC_KEY_SIZE }>::deserialize(deserializer)?;
-    println!("pubkey bytes: {:?}", bytes);
     PublicKey::from_slice(bytes.as_slice()).map_err(D::Error::custom)
 }

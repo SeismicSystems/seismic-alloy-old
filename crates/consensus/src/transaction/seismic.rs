@@ -199,29 +199,22 @@ impl<'a> arbitrary::Arbitrary<'a> for TxSeismicElements {
 
 impl Encodable for TxSeismicElements {
     fn encode(&self, out: &mut dyn BufMut) {
-        out.put_slice(&self.encryption_pubkey.serialize());
+        self.encryption_pubkey.serialize().encode(out);
         self.encryption_nonce.encode(out);
         self.message_version.encode(out);
     }
 
     fn length(&self) -> usize {
-        constants::PUBLIC_KEY_SIZE + self.encryption_nonce.length() + self.message_version.length()
+        self.encryption_pubkey.serialize().length()
+            + self.encryption_nonce.length()
+            + self.message_version.length()
     }
 }
 
 impl Decodable for TxSeismicElements {
     fn decode(buf: &mut &[u8]) -> alloy_rlp::Result<Self> {
-        println!("buf: {:?}", buf);
         // First read the public key bytes
-        let mut pubkey_bytes = [0u8; constants::PUBLIC_KEY_SIZE];
-        if buf.len() < constants::PUBLIC_KEY_SIZE {
-            return Err(alloy_rlp::Error::InputTooShort);
-        }
-        pubkey_bytes.copy_from_slice(&buf[..constants::PUBLIC_KEY_SIZE]);
-        println!("pubkey_bytes: {}", hex::encode(&pubkey_bytes[..]));
-
-        // Advance the buffer cursor past the public key bytes
-        *buf = &buf[constants::PUBLIC_KEY_SIZE..];
+        let pubkey_bytes: [u8; constants::PUBLIC_KEY_SIZE] = Decodable::decode(buf)?;
 
         // Now decode the message version and construct the result
         Ok(Self {
@@ -758,13 +751,10 @@ pub(super) mod serde_bincode_compat {
 
 #[cfg(test)]
 mod tests {
-    use alloy_eips::eip2718::Decodable2718;
     use alloy_primitives::{b256, hex, Address, PrimitiveSignature};
     use derive_more::FromStr;
     use k256::ecdsa::SigningKey;
     use seismic_enclave::MockEnclaveClient;
-
-    use crate::TypedTransaction;
 
     use super::*;
 
@@ -778,7 +768,7 @@ mod tests {
 
     #[test]
     fn test_encode_decode_seismic() {
-        let hash: B256 = b256!("c43c63e0f625efd30c54161b8b9e7feae2bb30382777a30bef7d0e77930733e6");
+        let hash: B256 = b256!("718b6582b8a0bce0ca87d67ce553d49e7cc228d58b1a63ee1ee6ededee699e63");
 
         let tx = TxSeismic {
             chain_id: 4u64,
@@ -809,7 +799,7 @@ mod tests {
             let signer = decoded.recover_signer().unwrap();
             assert_eq!(
                 signer,
-                Address::from_str("0x0434416b2fbe17e86b9171ee76f55062c8679135").unwrap()
+                Address::from_str("0x166cd796821ac9f47605dcf63c313f5a0df355e7").unwrap()
             );
         }
     }
@@ -930,36 +920,5 @@ mod tests {
         let result = seismic_elements.server_encrypt(&mock_enclave_client, &empty_bytes);
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), Bytes::new());
-    }
-
-    #[test]
-    fn test_eip712_encode_decode_with_prefix() {
-        // Test decoding a specific encoded transaction
-        let encoded_bytes = hex::decode("4af8ca827a69068467dc7ad082abe6945fc8d32690cc91d4c39d9d3abcbd16989f87570780a10294e83ccaf1d68fe642987e295d00423ceecf8fb906d080c36cb786a875f77f7e8ca0fba55702763c69a0d16b9c80b4ba31f789677c376b668b6b8133722a15ab55539157005d7f50000f01df86142916477a0862796f1cfbd8739ca8716e77b19760c280a030423f5362e51912c1b0501f5cb1c796d900f3b9dae0829eb6a876372df8c743a013f4572bc7cdfda5aba4087f8a8fd98f845418a4a320a86fdfca672d7dedf2b4").unwrap();
-        let mut encoded_slice = encoded_bytes.as_slice();
-
-        // Decode the transaction
-        let decoded_tx =
-            Signed::<TxSeismic, Signature>::eip2718_decode(&mut encoded_slice).unwrap();
-
-        println!("decoded_tx: {:?}", decoded_tx);
-
-        // // Verify the transaction fields match what we expect
-        // assert_eq!(decoded_tx.tx().chain_id, 0x7a69);
-        // assert_eq!(decoded_tx.tx().nonce, 0x2);
-        // assert_eq!(decoded_tx.tx().gas_price, 0x7e6bbc05);
-        // assert_eq!(decoded_tx.tx().gas_limit, 0xabe6);
-
-        // // Verify the signature matches
-        // assert_eq!(decoded_tx.signature().r(), r);
-        // assert_eq!(decoded_tx.signature().s(), s);
-        // assert_eq!(decoded_tx.signature().parity(), v);
-
-        // // Re-encode the transaction
-        // let mut encoded = Vec::new();
-        // decoded_tx.eip2718_encode(&mut encoded);
-
-        // // Verify the re-encoded transaction matches the original
-        // assert_eq!(encoded, encoded_bytes);
     }
 }
