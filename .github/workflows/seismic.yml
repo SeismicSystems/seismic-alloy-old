@@ -69,6 +69,7 @@ jobs:
         run: |
           git clone https://github.com/SeismicSystems/seismic-foundry.git
           cd seismic-foundry
+          git checkout 8093355
           cargo install --profile dev --path crates/anvil --locked
       - name: cargo test
         run: cargo nextest run --workspace
