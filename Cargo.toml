@@ -176,4 +176,4 @@ alloy-sol-types = { git = "https://github.com/SeismicSystems/seismic-alloy-core.
 alloy-sol-type-parser = { git = "https://github.com/SeismicSystems/seismic-alloy-core.git", rev = "6e1c0e9" }
 alloy-dyn-abi = { git = "https://github.com/SeismicSystems/seismic-alloy-core.git", rev = "6e1c0e9" }
 
-seismic-enclave = { git = "https://github.com/SeismicSystems/enclave.git", rev = "5e9d821" }
+seismic-enclave = { git = "https://github.com/SeismicSystems/seismic-enclave.git", rev = "788ae84"}
