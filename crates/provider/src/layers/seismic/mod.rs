@@ -27,7 +27,6 @@ pub fn build_seismic_tx(plaintext: Bytes, to: TxKind, from: Address) -> Transact
     }
 }
 
-#[cfg(test)]
 /// Utilities for testing seismic provider
 pub mod test_utils {
     use alloy_primitives::{hex, Bytes};
