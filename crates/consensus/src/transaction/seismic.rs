@@ -333,7 +333,7 @@ impl TxSeismic {
                   // compressed secp256k1 public key (33 bytes)
                   { "name": "input", "type": "bytes" },
                   { "name": "encryptionPubkey", "type": "bytes" },
-                  { "name": "encryptionNonce", "type": "uint64" },
+                  { "name": "encryptionNonce", "type": "uint128" },
                   { "name": "messageVersion", "type": "uint8" },
                 ],
             },
@@ -897,6 +897,9 @@ mod tests {
         println!("typed_data: {:?}", typed_data);
         let decoded = TxSeismic::eip712_decode(&typed_data).unwrap();
         assert_eq!(decoded, tx);
+
+        let signature_hash = decoded.eip712_signature_hash();
+        println!("signature_hash: {:?}", signature_hash);
     }
 
     #[test]
