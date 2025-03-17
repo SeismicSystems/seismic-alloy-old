@@ -369,10 +369,8 @@ impl TxSeismic {
     /// Decodes a [`TypedData`] into a [`TxSeismic`].
     pub fn eip712_decode(typed_data: &TypedData) -> Eip712Result<Self> {
         // Extract the `message` field from TypedData (JSON format)
-        println!("eip712_decode typed_data: {:?}", typed_data);
         let message = serde_json::to_value(&typed_data.message)
             .map_err(|_| Eip712Error::DecodeError("Failed to serialize message".to_string()))?;
-        println!("eip712_decode message: {:?}", message);
         // Deserialize JSON `message` into `TxSeismic`
         let mut tx: TxSeismic = serde_json::from_value(message)
             .map_err(|_| Eip712Error::DecodeError("Failed to deserialize message".to_string()))?;
@@ -753,7 +751,7 @@ pub(super) mod serde_bincode_compat {
 mod tests {
     use alloy_primitives::{b256, hex, Address, PrimitiveSignature};
     use derive_more::FromStr;
-    use k256::ecdsa::SigningKey;
+    use k256::{ecdsa::SigningKey, elliptic_curve::generic_array::GenericArray};
     use seismic_enclave::MockEnclaveClient;
 
     use super::*;
@@ -851,8 +849,8 @@ mod tests {
             },
             input:  hex!("a22cb4650000000000000000000000005eee75727d804a2b13038928d36f8b188945a57a0000000000000000000000000000000000000000000000000000000000000000").into(),
         };
+        println!("tx: {:?}", tx);
         let typed_data = tx.eip712_to_type_data();
-        println!("typed_data: {:?}", typed_data);
         let decoded = TxSeismic::eip712_decode(&typed_data).unwrap();
         assert_eq!(decoded, tx);
 
@@ -866,6 +864,7 @@ mod tests {
         );
 
         let signed = tx.clone().into_signed(sig);
+        println!("signed tx : {:?}", signed.tx());
         assert_eq!(signed.tx(), &tx);
         assert_eq!(signed.signature(), &sig);
         assert_ne!(*signed.hash(), signature_hash);
