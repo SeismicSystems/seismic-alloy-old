@@ -128,7 +128,10 @@ mod tests {
         let plaintext = ContractTestContext::get_deploy_input_plaintext();
         let anvil = Anvil::new().spawn();
         let wallet = get_wallet(&anvil);
-        let provider = SeismicSignedProvider::new(wallet.clone(), anvil.endpoint_url());
+        let provider = SeismicSignedProvider::new(
+            wallet.clone(),
+            reqwest::Url::parse("http://localhost:8545").unwrap(),
+        );
 
         let from = wallet.default_signer().address();
         let tx = TransactionRequest::default()
