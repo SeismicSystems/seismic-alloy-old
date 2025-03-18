@@ -108,10 +108,7 @@ mod tests {
         let plaintext = ContractTestContext::get_deploy_input_plaintext();
         let anvil = Anvil::new().spawn();
         let wallet = get_wallet(&anvil);
-        let provider = SeismicSignedProvider::new(
-            wallet.clone(),
-            reqwest::Url::parse("http://localhost:8545").unwrap(),
-        );
+        let provider = SeismicSignedProvider::new(wallet.clone(), anvil.endpoint_url());
 
         let tx = TransactionRequest::default().with_input(plaintext).with_kind(TxKind::Create);
 
@@ -124,10 +121,13 @@ mod tests {
     async fn test_seismic_unsigned_call() {
         let plaintext = ContractTestContext::get_deploy_input_plaintext();
         let anvil = Anvil::new().spawn();
-
+        let from = get_wallet(&anvil).default_signer().address();
         let unsigned_provider = SeismicUnsignedProvider::new(anvil.endpoint_url());
 
-        let tx = TransactionRequest::default().with_input(plaintext).with_kind(TxKind::Create);
+        let tx = TransactionRequest::default()
+            .with_input(plaintext)
+            .with_kind(TxKind::Create)
+            .with_from(from);
 
         let res = unsigned_provider.seismic_call(SendableTx::Builder(tx)).await.unwrap();
         assert_eq!(res, ContractTestContext::get_code());
