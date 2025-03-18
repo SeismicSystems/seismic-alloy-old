@@ -5,12 +5,12 @@ use crate::{
     },
     Signed, Transaction, TxEip1559, TxEip2930, TxEip7702, TxLegacy,
 };
+#[cfg(feature = "serde")]
+use alloy_eips::eip712::{Decodable712, Eip712Result, TypedDataRequest};
 use alloy_eips::{
     eip2718::{Decodable2718, Eip2718Error, Eip2718Result, Encodable2718},
     eip2930::AccessList,
 };
-#[cfg(feature = "serde")]
-use alloy_eips::eip712::{Decodable712, Eip712Result, TypedDataRequest};
 use alloy_primitives::{
     Bytes, ChainId, PrimitiveSignature as Signature, TxKind, B256, U256, U64, U8,
 };

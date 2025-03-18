@@ -1,11 +1,8 @@
 use crate::{transaction::RlpEcdsaTx, SignableTransaction, Signed, Transaction, TxType, Typed2718};
 use alloy_dyn_abi::TypedData;
-use alloy_eips::{
-    eip2930::AccessList,
-    eip7702::SignedAuthorization,
-};
 #[cfg(feature = "serde")]
 use alloy_eips::eip712::{Eip712Error, Eip712Result, TypedDataRequest};
+use alloy_eips::{eip2930::AccessList, eip7702::SignedAuthorization};
 use alloy_primitives::{
     aliases::U96, hex, keccak256, Address, Bytes, ChainId, PrimitiveSignature as Signature, TxKind,
     B256, U256,
