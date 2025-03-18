@@ -8,15 +8,18 @@ use crate::{
 use alloy_eips::{
     eip2718::{Decodable2718, Eip2718Error, Eip2718Result, Encodable2718},
     eip2930::AccessList,
-    eip712::{Decodable712, Eip712Result, TypedDataRequest},
 };
+#[cfg(feature = "serde")]
+use alloy_eips::eip712::{Decodable712, Eip712Result, TypedDataRequest};
 use alloy_primitives::{
     Bytes, ChainId, PrimitiveSignature as Signature, TxKind, B256, U256, U64, U8,
 };
 use alloy_rlp::{Decodable, Encodable};
 use core::fmt;
 
-use super::{seismic::TxSeismicElements, SignableTransaction, TxSeismic};
+use super::{seismic::TxSeismicElements, TxSeismic};
+#[cfg(feature = "serde")]
+use crate::transaction::SignableTransaction;
 
 /// Ethereum `TransactionType` flags as specified in EIPs [2718], [1559], [2930],
 /// [4844], and [7702].
@@ -499,6 +502,7 @@ impl Encodable2718 for TxEnvelope {
     }
 }
 
+#[cfg(feature = "serde")]
 impl Decodable712 for TxEnvelope {
     fn decode_712(typed_data: &TypedDataRequest) -> Eip712Result<Self> {
         let tx = TxSeismic::eip712_decode(&typed_data.data)?.into_signed(typed_data.signature);
