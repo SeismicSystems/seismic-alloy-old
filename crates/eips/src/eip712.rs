@@ -1,11 +1,10 @@
 //! EIP-712 typed data decoding
-
 use alloy_dyn_abi::TypedData;
 use alloy_primitives::PrimitiveSignature;
-use serde::{Deserialize, Serialize};
 
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 /// An EIP-712 typed data request with a signature
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Clone)]
 pub struct TypedDataRequest {
     /// The EIP-712 typed data
     pub data: TypedData,
