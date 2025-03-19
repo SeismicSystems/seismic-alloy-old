@@ -333,7 +333,7 @@ impl TxSeismic {
                   // compressed secp256k1 public key (33 bytes)
                   { "name": "input", "type": "bytes" },
                   { "name": "encryptionPubkey", "type": "bytes" },
-                  { "name": "encryptionNonce", "type": "uint128" },
+                  { "name": "encryptionNonce", "type": "uint96" },
                   { "name": "messageVersion", "type": "uint8" },
                 ],
             },
