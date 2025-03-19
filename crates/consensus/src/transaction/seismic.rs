@@ -1,10 +1,8 @@
 use crate::{transaction::RlpEcdsaTx, SignableTransaction, Signed, Transaction, TxType, Typed2718};
 use alloy_dyn_abi::TypedData;
-use alloy_eips::{
-    eip2930::AccessList,
-    eip712::{Eip712Error, Eip712Result, TypedDataRequest},
-    eip7702::SignedAuthorization,
-};
+#[cfg(feature = "serde")]
+use alloy_eips::eip712::{Eip712Error, Eip712Result, TypedDataRequest};
+use alloy_eips::{eip2930::AccessList, eip7702::SignedAuthorization};
 use alloy_primitives::{
     aliases::U96, hex, keccak256, Address, Bytes, ChainId, PrimitiveSignature as Signature, TxKind,
     B256, U256,
@@ -366,6 +364,7 @@ impl TxSeismic {
             .unwrap()
     }
 
+    #[cfg(feature = "serde")]
     /// Decodes a [`TypedData`] into a [`TxSeismic`].
     pub fn eip712_decode(typed_data: &TypedData) -> Eip712Result<Self> {
         // Extract the `message` field from TypedData (JSON format)
@@ -389,6 +388,7 @@ impl TxSeismic {
     }
 }
 
+#[cfg(feature = "serde")]
 impl From<Signed<TxSeismic>> for TypedDataRequest {
     fn from(tx: Signed<TxSeismic>) -> Self {
         TypedDataRequest { data: tx.tx().eip712_to_type_data(), signature: *tx.signature() }
