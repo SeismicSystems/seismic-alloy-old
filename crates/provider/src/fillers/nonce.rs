@@ -117,7 +117,7 @@ impl NonceManager for CachedNonceManager {
 /// # }
 /// ```
 #[derive(Clone, Debug, Default)]
-pub struct NonceFiller<M: NonceManager = SimpleNonceManager> {
+pub struct NonceFiller<M: NonceManager = CachedNonceManager> {
     nonce_manager: M,
 }
 
