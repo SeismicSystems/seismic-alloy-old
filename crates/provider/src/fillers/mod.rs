@@ -13,7 +13,9 @@ mod wallet;
 pub use wallet::WalletFiller;
 
 mod nonce;
-pub use nonce::{CachedNonceManager, NonceFiller, NonceManager, SimpleNonceManager};
+pub use nonce::{
+    CachedNonceManager, LatestNonceManager, NonceFiller, NonceManager, SimpleNonceManager,
+};
 
 mod gas;
 pub use gas::{BlobGasFiller, GasFillable, GasFiller};
