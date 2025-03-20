@@ -7,7 +7,6 @@
 //! [`Provider`]: crate::Provider
 
 mod chain_id;
-use alloy_primitives::Bytes;
 pub use chain_id::ChainIdFiller;
 
 mod wallet;
