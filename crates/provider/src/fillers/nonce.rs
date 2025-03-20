@@ -46,6 +46,29 @@ impl NonceManager for SimpleNonceManager {
     }
 }
 
+/// This [`NonceManager`] implementation will fetch the transaction count for any new account it
+/// sees.
+///
+/// Unlike [`CachedNonceManager`], this implementation does not store the transaction count locally,
+/// which results in more frequent calls to the provider, but it is more resilient to chain
+/// reorganizations.
+#[derive(Clone, Debug, Default)]
+#[non_exhaustive]
+pub struct LatestNonceManager;
+
+#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+impl NonceManager for LatestNonceManager {
+    async fn get_next_nonce<P, T, N>(&self, provider: &P, address: Address) -> TransportResult<u64>
+    where
+        P: Provider<T, N>,
+        N: Network,
+        T: Transport + Clone,
+    {
+        provider.get_transaction_count(address).latest().await
+    }
+}
+
 /// Cached nonce manager
 ///
 /// This [`NonceManager`] implementation will fetch the transaction count for any new account it

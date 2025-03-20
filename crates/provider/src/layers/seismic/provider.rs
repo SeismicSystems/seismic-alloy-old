@@ -4,6 +4,7 @@ use alloy_consensus::transaction::TxSeismicElements;
 use alloy_network::{Network, TransactionBuilder};
 use alloy_primitives::Bytes;
 use alloy_transport::{Transport, TransportErrorKind, TransportResult};
+use seismic_enclave::PublicKey;
 use std::marker::PhantomData;
 
 /// Seismic middlware for encrypting transactions and decrypting responses
@@ -11,6 +12,8 @@ use std::marker::PhantomData;
 pub struct SeismicProvider<P, T, N> {
     /// Inner provider.
     inner: P,
+    /// network public key
+    network_pubkey: PublicKey,
     /// Phantom data
     _pd: PhantomData<(T, N)>,
 }
@@ -23,7 +26,12 @@ where
 {
     /// Create a new seismic provider
     pub(crate) fn new(inner: P) -> Self {
-        Self { inner, _pd: PhantomData }
+        let handle = tokio::runtime::Handle::try_current()
+            .unwrap_or_else(|_| tokio::runtime::Runtime::new().unwrap().handle().clone());
+
+        let network_pubkey =
+            tokio::task::block_in_place(|| handle.block_on(inner.get_tee_pubkey()).unwrap());
+        Self { inner, network_pubkey, _pd: PhantomData }
     }
 
     /// Should encrypt input
@@ -48,12 +56,6 @@ where
     async fn seismic_call(&self, mut tx: SendableTx<N>) -> TransportResult<Bytes> {
         if let Some(builder) = tx.as_mut_builder() {
             if self.should_encrypt_input(builder) {
-                let network_pk = self.inner.get_tee_pubkey().await.map_err(|e| {
-                    TransportErrorKind::custom_str(&format!(
-                        "Error getting tee pubkey from server: {:?}",
-                        e
-                    ))
-                })?;
                 let encryption_keypair = TxSeismicElements::get_rand_encryption_keypair();
                 let seismic_elements = TxSeismicElements::default()
                     .with_encryption_pubkey(encryption_keypair.public_key())
@@ -62,7 +64,11 @@ where
                 // Encrypt using recipient's public key and generated private key
                 let plaintext_input = builder.input().unwrap();
                 let encrypted_input = seismic_elements
-                    .client_encrypt(&plaintext_input, &network_pk, &encryption_keypair.secret_key())
+                    .client_encrypt(
+                        &plaintext_input,
+                        &self.network_pubkey,
+                        &encryption_keypair.secret_key(),
+                    )
                     .map_err(|e| {
                         TransportErrorKind::custom_str(&format!("Error encrypting input: {:?}", e))
                     })?;
@@ -80,7 +86,7 @@ where
                         let decrypted_output = seismic_elements
                             .client_decrypt(
                                 &encrypted_output,
-                                &network_pk,
+                                &self.network_pubkey,
                                 &encryption_keypair.secret_key(),
                             )
                             .map_err(|e| {
@@ -103,12 +109,6 @@ where
     ) -> TransportResult<PendingTransactionBuilder<T, N>> {
         if let Some(builder) = tx.as_mut_builder() {
             if self.should_encrypt_input(builder) {
-                let network_pk = self.inner.get_tee_pubkey().await.map_err(|e| {
-                    TransportErrorKind::custom_str(&format!(
-                        "Error getting tee pubkey from server: {:?}",
-                        e
-                    ))
-                })?;
                 let encryption_keypair = TxSeismicElements::get_rand_encryption_keypair();
                 let seismic_elements = TxSeismicElements::default()
                     .with_encryption_pubkey(encryption_keypair.public_key())
@@ -117,7 +117,11 @@ where
                 // Encrypt using recipient's public key and generated private key
                 let plaintext_input = builder.input().unwrap();
                 let encrypted_input = seismic_elements
-                    .client_encrypt(&plaintext_input, &network_pk, &encryption_keypair.secret_key())
+                    .client_encrypt(
+                        &plaintext_input,
+                        &self.network_pubkey,
+                        &encryption_keypair.secret_key(),
+                    )
                     .map_err(|e| {
                         TransportErrorKind::custom_str(&format!("Error encrypting input: {:?}", e))
                     })?;
