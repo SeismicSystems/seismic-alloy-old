@@ -1,6 +1,9 @@
 //! Seismic provider for HTTP requests
 use crate::{
-    fillers::{FillProvider, JoinFill, RecommendedFillers, WalletFiller},
+    fillers::{
+        BlobGasFiller, CachedNonceManager, ChainIdFiller, FillProvider, GasFiller, JoinFill,
+        NonceFiller, RecommendedFillers, WalletFiller,
+    },
     Identity, ProviderBuilder, RootProvider,
 };
 use alloy_network::{Ethereum, EthereumWallet};
@@ -12,7 +15,10 @@ use crate::layers::seismic::{layer::SeismicLayer, provider::SeismicProvider};
 pub type SeismicSignedProviderInner = SeismicProvider<
     FillProvider<
         JoinFill<
-            <Ethereum as RecommendedFillers>::RecommendedFillers,
+            JoinFill<
+                GasFiller,
+                JoinFill<BlobGasFiller, JoinFill<NonceFiller<CachedNonceManager>, ChainIdFiller>>,
+            >,
             WalletFiller<EthereumWallet>,
         >,
         RootProvider<alloy_transport_http::Http<alloy_transport_http::Client>, Ethereum>,
@@ -31,8 +37,19 @@ impl SeismicSignedProvider {
     /// Creates a new seismic signed provider
     pub fn new(wallet: EthereumWallet, url: reqwest::Url) -> Self {
         // Create wallet layer with recommended fillers
-        let tx_filler_layer =
-            JoinFill::new(Ethereum::recommended_fillers(), WalletFiller::new(wallet.clone()));
+        let tx_filler_layer = JoinFill::new(
+            JoinFill::new(
+                GasFiller,
+                JoinFill::new(
+                    BlobGasFiller,
+                    JoinFill::new(
+                        NonceFiller::<CachedNonceManager>::default(),
+                        ChainIdFiller::default(),
+                    ),
+                ),
+            ),
+            WalletFiller::new(wallet.clone()),
+        );
 
         // Build and return the provider
         let inner = ProviderBuilder::new()
