@@ -167,25 +167,6 @@ impl Default for TxSeismicElements {
 #[cfg(any(test, feature = "arbitrary"))]
 impl<'a> arbitrary::Arbitrary<'a> for TxSeismicElements {
     fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        // Try to generate a valid public key
-        let mut attempts = 0;
-        const MAX_ATTEMPTS: usize = 5;
-
-        while attempts < MAX_ATTEMPTS {
-            let mut encryption_pubkey_bytes = [0u8; constants::PUBLIC_KEY_SIZE];
-            u.fill_buffer(&mut encryption_pubkey_bytes)?;
-
-            if let Ok(pubkey) = PublicKey::from_slice(&encryption_pubkey_bytes) {
-                return Ok(Self {
-                    encryption_pubkey: pubkey,
-                    message_version: u8::arbitrary(u)?,
-                    encryption_nonce: U96::arbitrary(u)?,
-                });
-            }
-
-            attempts += 1;
-        }
-
         // Fall back to default if we couldn't generate a valid key after several attempts
         Ok(Self {
             encryption_pubkey: Self::default().encryption_pubkey,
