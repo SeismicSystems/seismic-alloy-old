@@ -43,7 +43,7 @@ impl SeismicSignedProvider {
                 JoinFill::new(
                     BlobGasFiller,
                     JoinFill::new(
-                        NonceFiller::<CachedNonceManager>::default(),
+                        NonceFiller::<SimpleNonceManager>::default(),
                         ChainIdFiller::default(),
                     ),
                 ),
