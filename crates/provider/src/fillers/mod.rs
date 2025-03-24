@@ -292,6 +292,22 @@ where
         self.inner.root()
     }
 
+    async fn seismic_call(&self, mut tx: SendableTx<N>) -> TransportResult<Bytes> {
+        tx = self.fill_inner(tx).await?;
+
+        if let Some(builder) = tx.as_builder() {
+            if let FillerControlFlow::Missing(missing) = self.filler.status(builder) {
+                // TODO: improve this.
+                // blocked by #431
+                let message = format!("missing properties: {:?}", missing);
+                return Err(RpcError::local_usage_str(&message));
+            }
+        }
+
+        // Errors in tx building happen further down the stack.
+        self.inner.send_transaction_internal(tx).await
+    }
+
     async fn send_transaction_internal(
         &self,
         mut tx: SendableTx<N>,
