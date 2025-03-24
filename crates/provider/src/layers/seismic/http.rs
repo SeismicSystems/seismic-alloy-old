@@ -1,8 +1,8 @@
 //! Seismic provider for HTTP requests
 use crate::{
     fillers::{
-        BlobGasFiller, CachedNonceManager, ChainIdFiller, FillProvider, GasFiller, JoinFill,
-        NonceFiller, RecommendedFillers, WalletFiller,
+        BlobGasFiller, ChainIdFiller, FillProvider, GasFiller, JoinFill, NonceFiller,
+        RecommendedFillers, SimpleNonceManager, WalletFiller,
     },
     Identity, ProviderBuilder, RootProvider,
 };
@@ -17,7 +17,7 @@ pub type SeismicSignedProviderInner = SeismicProvider<
         JoinFill<
             JoinFill<
                 GasFiller,
-                JoinFill<BlobGasFiller, JoinFill<NonceFiller<CachedNonceManager>, ChainIdFiller>>,
+                JoinFill<BlobGasFiller, JoinFill<NonceFiller<SimpleNonceManager>, ChainIdFiller>>,
             >,
             WalletFiller<EthereumWallet>,
         >,
@@ -43,7 +43,7 @@ impl SeismicSignedProvider {
                 JoinFill::new(
                     BlobGasFiller,
                     JoinFill::new(
-                        NonceFiller::<CachedNonceManager>::default(),
+                        NonceFiller::<SimpleNonceManager>::default(),
                         ChainIdFiller::default(),
                     ),
                 ),
