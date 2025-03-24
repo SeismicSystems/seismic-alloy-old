@@ -305,7 +305,7 @@ where
         }
 
         // Errors in tx building happen further down the stack.
-        self.inner.send_transaction_internal(tx).await
+        self.inner.seismic_call(tx).await
     }
 
     async fn send_transaction_internal(
