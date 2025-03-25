@@ -106,7 +106,7 @@ pub struct UnknownTypedTransaction {
 impl alloy_consensus::transaction::ShieldableTransaction for UnknownTypedTransaction {
     fn shield_input(&mut self) {
         match self.ty.0 {
-            0x4A => {
+            alloy_consensus::constants::SEISMIC_TX_TYPE_ID => {
                 if let Some(input) = self.fields.get_mut("input") {
                     *input = serde_json::Value::String("0x".to_string());
                 }
