@@ -365,6 +365,12 @@ impl<T: Transaction> Transaction for alloy_serde::WithOtherFields<T> {
     }
 }
 
+impl<T: ShieldableTransaction> ShieldableTransaction for alloy_serde::WithOtherFields<T> {
+    fn shield_inputs(&mut self) {
+        self.inner.shield_inputs();
+    }
+}
+
 /// A trait that helps to determine the type of the transaction.
 #[auto_impl::auto_impl(&)]
 pub trait Typed2718 {

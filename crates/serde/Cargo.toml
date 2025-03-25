@@ -20,7 +20,6 @@ workspace = true
 
 [dependencies]
 alloy-primitives = { workspace = true, features = ["serde", "map"] }
-alloy-consensus = { workspace = true }
 serde.workspace = true
 serde_json = { workspace = true, features = ["alloc"] }
 

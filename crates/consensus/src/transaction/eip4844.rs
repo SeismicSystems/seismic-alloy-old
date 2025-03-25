@@ -150,6 +150,12 @@ impl TxEip4844Variant {
     }
 }
 
+
+impl crate::transaction::ShieldableTransaction for TxEip4844Variant {
+    fn shield_inputs(&mut self) {}
+}
+
+
 impl Transaction for TxEip4844Variant {
     #[inline]
     fn chain_id(&self) -> Option<ChainId> {
@@ -611,6 +617,10 @@ impl SignableTransaction<Signature> for TxEip4844 {
     }
 }
 
+impl crate::transaction::ShieldableTransaction for TxEip4844 {
+    fn shield_inputs(&mut self) {}
+}
+
 impl Transaction for TxEip4844 {
     #[inline]
     fn chain_id(&self) -> Option<ChainId> {
@@ -833,6 +843,10 @@ impl SignableTransaction<Signature> for TxEip4844WithSidecar {
 
         Signed::new_unchecked(self, signature, hash)
     }
+}
+
+impl crate::transaction::ShieldableTransaction for TxEip4844WithSidecar {
+    fn shield_inputs(&mut self) {}
 }
 
 impl Transaction for TxEip4844WithSidecar {

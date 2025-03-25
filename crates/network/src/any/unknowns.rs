@@ -103,6 +103,10 @@ pub struct UnknownTypedTransaction {
     pub memo: DeserMemo,
 }
 
+impl alloy_consensus::transaction::ShieldableTransaction for UnknownTypedTransaction {
+    fn shield_inputs(&mut self) {}
+}
+
 impl alloy_consensus::Transaction for UnknownTypedTransaction {
     #[inline]
     fn chain_id(&self) -> Option<ChainId> {
@@ -282,6 +286,12 @@ pub struct UnknownTxEnvelope {
 impl AsRef<UnknownTypedTransaction> for UnknownTxEnvelope {
     fn as_ref(&self) -> &UnknownTypedTransaction {
         &self.inner
+    }
+}
+
+impl alloy_consensus::transaction::ShieldableTransaction for UnknownTxEnvelope {
+    fn shield_inputs(&mut self) {
+        self.inner.shield_inputs();
     }
 }
 

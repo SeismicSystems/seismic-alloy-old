@@ -233,6 +233,10 @@ impl RlpEcdsaTx for TxLegacy {
     }
 }
 
+impl crate::transaction::ShieldableTransaction for TxLegacy {
+    fn shield_inputs(&mut self) {}
+}
+
 impl Transaction for TxLegacy {
     #[inline]
     fn chain_id(&self) -> Option<ChainId> {

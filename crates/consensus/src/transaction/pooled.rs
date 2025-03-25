@@ -316,6 +316,18 @@ impl Decodable2718 for PooledTransaction {
     }
 }
 
+impl crate::transaction::ShieldableTransaction for PooledTransaction {
+    fn shield_inputs(&mut self) {
+        match self {
+            Self::Legacy(tx) => tx.tx_mut().shield_inputs(),
+            Self::Seismic(tx) => tx.tx_mut().shield_inputs(),
+            Self::Eip2930(tx) => tx.tx_mut().shield_inputs(),
+            Self::Eip1559(tx) => tx.tx_mut().shield_inputs(),
+            Self::Eip7702(tx) => tx.tx_mut().shield_inputs(),
+            Self::Eip4844(tx) => tx.tx_mut().shield_inputs(),
+        }
+    }
+}
 impl Transaction for PooledTransaction {
     fn chain_id(&self) -> Option<ChainId> {
         match self {

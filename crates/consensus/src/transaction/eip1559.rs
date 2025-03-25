@@ -4,6 +4,8 @@ use alloy_primitives::{Bytes, ChainId, PrimitiveSignature as Signature, TxKind, 
 use alloy_rlp::{BufMut, Decodable, Encodable};
 use core::mem;
 
+use super::ShieldableTransaction;
+
 /// A transaction with a priority fee ([EIP-1559](https://eips.ethereum.org/EIPS/eip-1559)).
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 #[cfg_attr(any(test, feature = "arbitrary"), derive(arbitrary::Arbitrary))]
@@ -152,6 +154,10 @@ impl RlpEcdsaTx for TxEip1559 {
             access_list: Decodable::decode(buf)?,
         })
     }
+}
+
+impl ShieldableTransaction for TxEip1559 {
+    fn shield_inputs(&mut self) {}
 }
 
 impl Transaction for TxEip1559 {

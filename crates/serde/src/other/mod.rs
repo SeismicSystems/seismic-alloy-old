@@ -7,7 +7,6 @@ use core::{
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::Value;
-use alloy_consensus::transaction::ShieldableTransaction;
 #[cfg(any(test, feature = "arbitrary"))]
 mod arbitrary_;
 
@@ -171,15 +170,6 @@ pub struct WithOtherFields<T> {
     /// All fields not present in the inner struct.
     #[serde(flatten)]
     pub other: OtherFields,
-}
-
-impl<T> ShieldableTransaction for WithOtherFields<T>
-where
-    T: ShieldableTransaction,
-{
-    fn shield_inputs(&mut self) {
-        self.inner.shield_inputs();
-    }
 }
 
 impl<T, U> AsRef<U> for WithOtherFields<T>

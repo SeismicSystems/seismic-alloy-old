@@ -152,6 +152,10 @@ impl RlpEcdsaTx for TxEip7702 {
     }
 }
 
+impl crate::transaction::ShieldableTransaction for TxEip7702 {
+    fn shield_inputs(&mut self) {}
+}
+
 impl Transaction for TxEip7702 {
     #[inline]
     fn chain_id(&self) -> Option<ChainId> {
