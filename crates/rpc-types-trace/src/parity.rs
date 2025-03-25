@@ -494,6 +494,7 @@ impl TransactionTrace {
         self
     }
 }
+
 /// A wrapper for [TransactionTrace] that includes additional information about the transaction.
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "camelCase")]
