@@ -243,6 +243,17 @@ impl Action {
             Self::Reward(_) => ActionType::Reward,
         }
     }
+
+    /// Shield the inputs of an action.
+    pub fn shield_inputs(self) -> Self {
+        match self {
+            Self::Call(action) => Self::Call(action.shield_inputs()),
+            // TODO: do we have to shield these?
+            Self::Create(action) => Self::Create(action),
+            Self::Selfdestruct(action) => Self::Selfdestruct(action),
+            Self::Reward(action) => Self::Reward(action),
+        }
+    }
 }
 
 /// An external action type.
@@ -298,6 +309,14 @@ pub struct CallAction {
     pub to: Address,
     /// Value transferred to the destination account.
     pub value: U256,
+}
+
+impl CallAction {
+    /// Shield the inputs of a call action.
+    pub fn shield_inputs(mut self) -> Self {
+        self.input = Bytes::new();
+        self
+    }
 }
 
 /// Creation method.
@@ -481,6 +500,13 @@ pub struct LocalizedTransactionTrace {
     pub transaction_position: Option<u64>,
 }
 
+impl LocalizedTransactionTrace {
+    /// Shield the inputs of transactions.
+    pub fn shield_inputs(mut self) -> Self {
+        self.trace.action = self.trace.action.shield_inputs();
+        self
+    }
+}
 // Implement Serialize manually to ensure consistent ordering of fields to match other client's
 // format
 impl Serialize for LocalizedTransactionTrace {

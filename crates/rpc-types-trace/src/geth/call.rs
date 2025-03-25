@@ -45,6 +45,14 @@ pub struct CallFrame {
     pub typ: String,
 }
 
+impl CallFrame {
+    /// Shield the inputs of a call frame.
+    pub fn shield_inputs(mut self) -> Self {
+        self.input = Bytes::new();
+        self
+    }
+}
+
 /// Represents a recorded log that is emitted during a trace call.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CallLogFrame {
