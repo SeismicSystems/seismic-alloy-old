@@ -316,7 +316,7 @@ pub struct CallAction {
     pub to: Address,
     /// Value transferred to the destination account.
     pub value: U256,
-    /// Transaction type
+    /// Transaction type. Seismic tx's will have input shielded (set to empty bytes)
     pub tx_type: isize,
 }
 

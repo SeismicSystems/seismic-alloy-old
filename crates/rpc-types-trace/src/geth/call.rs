@@ -43,7 +43,7 @@ pub struct CallFrame {
     /// The type of the call.
     #[serde(rename = "type")]
     pub typ: String,
-    /// Transaction type
+    /// Transaction type. Seismic tx's will have input shielded (set to empty bytes)
     #[serde(default, rename = "txType")]
     pub tx_type: isize,
 }
