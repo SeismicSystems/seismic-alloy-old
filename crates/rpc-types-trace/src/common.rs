@@ -3,8 +3,6 @@
 use alloy_primitives::TxHash;
 use serde::{Deserialize, Serialize};
 
-use crate::geth::GethTrace;
-
 /// The result of a single transaction trace.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(untagged)]
@@ -75,7 +73,7 @@ impl<Ok, Err> TraceResult<Ok, Err> {
     }
 }
 
-impl<Err> TraceResult<GethTrace, Err> {
+impl<Err> TraceResult<crate::geth::GethTrace, Err> {
     /// Shield the inputs of a trace result.
     pub fn shield_inputs(self) -> Self {
         match self {
