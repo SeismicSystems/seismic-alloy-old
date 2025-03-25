@@ -316,12 +316,16 @@ pub struct CallAction {
     pub to: Address,
     /// Value transferred to the destination account.
     pub value: U256,
+    /// Transaction type
+    pub tx_type: isize,
 }
 
 impl CallAction {
     /// Shield the inputs of a call action.
     pub fn shield_inputs(mut self) -> Self {
-        self.input = Bytes::new();
+        if self.tx_type == alloy_consensus::transaction::TxSeismic::TX_TYPE as isize {
+            self.input = Bytes::new();
+        }
         self
     }
 }
@@ -487,7 +491,6 @@ impl TransactionTrace {
     /// Shield the inputs of a transaction trace.
     pub fn shield_inputs(mut self) -> Self {
         self.action = self.action.shield_inputs();
-        // TODO: do we need to shield the result?
         self
     }
 }
@@ -725,6 +728,7 @@ mod tests {
                             input: Bytes::from_str("0x585a9fd40000000000000000000000000000000000000000000000000000000000000040a47c5ad9a4af285720eae6cc174a9c75c5bbaf973b00f1a0c191327445b6581000000000000000000000000000000000000000000000000000000000000001e000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000140000000000000000000000000ce16f69375520ab01377ce7b88f5ba8c48f8d666f61490331372e432315cd97447e3bc452d6c73a6e0536260a88ddab46f85c88d00000000000000000000000000000000000000000000000000000000000001a0000000000000000000000000000000000000000000000000000000000aab8cf0fbfb038751339cb61161fa11789b41a78f1b7b0e12cf8e467d403590b7a5f26f0000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000646616e746f6d0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002a3078636531364636393337353532306162303133373763653742383866354241384334384638443636360000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000045553444300000000000000000000000000000000000000000000000000000000").unwrap(),
                             to:  "0x99b5fa03a5ea4315725c43346e55a6a6fbd94098".parse::<Address>().unwrap(),
                             value: U256::from(0),
+                            tx_type: alloy_consensus::transaction::TxLegacy::TX_TYPE,
                         }),
                         error: None,
                         result: Some(TraceOutput::Call(CallOutput { gas_used: 32364, output: Bytes::new() })),
@@ -890,6 +894,7 @@ mod tests {
                 input: Bytes::from_str("0x1234").unwrap(),
                 to: Address::from_str("0x0987654321098765432109876543210987654321").unwrap(),
                 value: U256::from(0),
+                tx_type: alloy_consensus::transaction::TxLegacy::TX_TYPE,
             }),
             ..Default::default()
         };

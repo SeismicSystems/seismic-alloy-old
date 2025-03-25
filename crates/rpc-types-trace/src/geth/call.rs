@@ -43,12 +43,17 @@ pub struct CallFrame {
     /// The type of the call.
     #[serde(rename = "type")]
     pub typ: String,
+    /// Transaction type
+    #[serde(default, rename = "txType")]
+    pub tx_type: isize,
 }
 
 impl CallFrame {
     /// Shield the inputs of a call frame.
     pub fn shield_inputs(mut self) -> Self {
-        self.input = Bytes::new();
+        if self.tx_type == alloy_consensus::transaction::TxLegacy::TX_TYPE as isize {
+            self.input = Bytes::new();
+        }
         self
     }
 }

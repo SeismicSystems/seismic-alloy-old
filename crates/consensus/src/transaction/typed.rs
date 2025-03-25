@@ -167,7 +167,11 @@ impl ShieldableTransaction for TypedTransaction {
     fn shield_input(&mut self) {
         match self {
             Self::Seismic(tx) => tx.shield_input(),
-            _ => {}
+            Self::Eip2930(tx) => tx.shield_input(),
+            Self::Eip1559(tx) => tx.shield_input(),
+            Self::Eip4844(tx) => tx.shield_input(),
+            Self::Eip7702(tx) => tx.shield_input(),
+            Self::Legacy(tx) => tx.shield_input(),
         }
     }
 }
