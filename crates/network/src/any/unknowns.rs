@@ -6,7 +6,6 @@ use alloy_eips::{eip2718::Eip2718Error, eip7702::SignedAuthorization};
 use alloy_primitives::{Address, Bytes, ChainId, TxKind, B256, U128, U256, U64, U8};
 use alloy_rpc_types_eth::AccessList;
 use alloy_serde::OtherFields;
-use serde_json::Value;
 
 /// Transaction type for a catch-all network.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -109,7 +108,7 @@ impl alloy_consensus::transaction::ShieldableTransaction for UnknownTypedTransac
         match self.ty.0 {
             0x4A => {
                 if let Some(input) = self.fields.get_mut("input") {
-                    *input = Value::String("0x".to_string());
+                    *input = serde_json::Value::String("0x".to_string());
                 }
             }
             _ => {}
