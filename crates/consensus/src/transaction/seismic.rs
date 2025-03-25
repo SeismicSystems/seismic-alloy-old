@@ -19,6 +19,8 @@ use seismic_enclave::{
     Keypair, PublicKey, Secp256k1, SecretKey,
 };
 
+use crate::transaction::ShieldableTransaction;
+
 /// Contains Seismic-specific encryption and message fields
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Copy)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -255,6 +257,12 @@ pub struct TxSeismic {
     /// Seismic-specific encryption and message data
     #[cfg_attr(feature = "serde", serde(flatten))]
     pub seismic_elements: TxSeismicElements,
+}
+
+impl ShieldableTransaction for TxSeismic {
+    fn shield_inputs(&mut self) {
+        self.input = Bytes::new();
+    }
 }
 
 impl TxSeismic {

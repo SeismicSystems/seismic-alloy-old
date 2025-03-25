@@ -75,7 +75,7 @@ impl<T: ShieldableTransaction> ShieldableTransaction for Signed<T> {
 /// Represents a minimal EVM transaction.
 #[doc(alias = "Tx")]
 #[auto_impl::auto_impl(&, Arc)]
-pub trait Transaction: Typed2718 + fmt::Debug + any::Any + Send + Sync + 'static {
+pub trait Transaction: Typed2718 + fmt::Debug + any::Any + Send + Sync + 'static + ShieldableTransaction {
     /// Get `chain_id`.
     fn chain_id(&self) -> Option<ChainId>;
 
