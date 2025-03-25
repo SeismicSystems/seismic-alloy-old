@@ -3,6 +3,8 @@
 use alloy_primitives::TxHash;
 use serde::{Deserialize, Serialize};
 
+use crate::geth::GethTrace;
+
 /// The result of a single transaction trace.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(untagged)]
@@ -70,6 +72,16 @@ impl<Ok, Err> TraceResult<Ok, Err> {
     /// Creates a new error trace result.
     pub const fn new_error(error: Err, tx_hash: Option<TxHash>) -> Self {
         Self::Error { error, tx_hash }
+    }
+}
+
+impl <Err> TraceResult<GethTrace, Err> {
+    /// Shield the inputs of a trace result.
+    pub fn shield_inputs(self) -> Self {
+        match self {
+            Self::Success { result, tx_hash } => Self::Success { result: result.shield_inputs(), tx_hash },
+            Self::Error { error, tx_hash } => Self::Error { error, tx_hash },
+        }
     }
 }
 
