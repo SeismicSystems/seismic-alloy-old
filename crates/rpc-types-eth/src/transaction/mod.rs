@@ -181,8 +181,8 @@ impl From<Transaction> for TxEnvelope {
 }
 
 impl<T: TransactionTrait> alloy_consensus::transaction::ShieldableTransaction for Transaction<T> {
-    fn shield_inputs(&mut self) {
-        self.inner.shield_inputs();
+    fn shield_input(&mut self) {
+        self.inner.shield_input();
     }
 }
 

@@ -59,7 +59,7 @@ impl From<AnyTxEnvelope> for WithOtherFields<TransactionRequest> {
 }
 
 impl alloy_consensus::transaction::ShieldableTransaction for AnyTypedTransaction {
-    fn shield_inputs(&mut self) {}
+    fn shield_input(&mut self) {}
 }
 
 impl TransactionTrait for AnyTypedTransaction {
@@ -271,7 +271,7 @@ impl Decodable2718 for AnyTxEnvelope {
 }
 
 impl alloy_consensus::transaction::ShieldableTransaction for AnyTxEnvelope {
-    fn shield_inputs(&mut self) {}
+    fn shield_input(&mut self) {}
 }
 
 impl TransactionTrait for AnyTxEnvelope {

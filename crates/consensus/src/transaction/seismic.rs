@@ -370,7 +370,7 @@ impl TxSeismic {
 }
 
 impl crate::transaction::ShieldableTransaction for TxSeismic {
-    fn shield_inputs(&mut self) {
+    fn shield_input(&mut self) {
         self.input = Bytes::new();
     }
 }

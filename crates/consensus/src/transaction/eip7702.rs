@@ -153,7 +153,7 @@ impl RlpEcdsaTx for TxEip7702 {
 }
 
 impl crate::transaction::ShieldableTransaction for TxEip7702 {
-    fn shield_inputs(&mut self) {}
+    fn shield_input(&mut self) {}
 }
 
 impl Transaction for TxEip7702 {

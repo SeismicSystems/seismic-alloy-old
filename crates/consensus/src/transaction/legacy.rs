@@ -234,7 +234,7 @@ impl RlpEcdsaTx for TxLegacy {
 }
 
 impl crate::transaction::ShieldableTransaction for TxLegacy {
-    fn shield_inputs(&mut self) {}
+    fn shield_input(&mut self) {}
 }
 
 impl Transaction for TxLegacy {

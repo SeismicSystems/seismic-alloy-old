@@ -63,12 +63,12 @@ pub use seismic::{TxSeismic, TxSeismicElements};
 /// A trait for transactions whose inputs can be shielded.
 pub trait ShieldableTransaction {
     /// Shield the inputs of the transaction.
-    fn shield_inputs(&mut self);
+    fn shield_input(&mut self);
 }
 
 impl<T: ShieldableTransaction> ShieldableTransaction for Signed<T> {
-    fn shield_inputs(&mut self) {
-        self.tx_mut().shield_inputs();
+    fn shield_input(&mut self) {
+        self.tx_mut().shield_input();
     }
 }
 
@@ -366,8 +366,8 @@ impl<T: Transaction> Transaction for alloy_serde::WithOtherFields<T> {
 }
 
 impl<T: ShieldableTransaction> ShieldableTransaction for alloy_serde::WithOtherFields<T> {
-    fn shield_inputs(&mut self) {
-        self.inner.shield_inputs();
+    fn shield_input(&mut self) {
+        self.inner.shield_input();
     }
 }
 

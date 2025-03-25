@@ -157,7 +157,7 @@ impl RlpEcdsaTx for TxEip1559 {
 }
 
 impl ShieldableTransaction for TxEip1559 {
-    fn shield_inputs(&mut self) {}
+    fn shield_input(&mut self) {}
 }
 
 impl Transaction for TxEip1559 {

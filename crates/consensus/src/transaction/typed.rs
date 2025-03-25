@@ -164,9 +164,9 @@ impl TypedTransaction {
 }
 
 impl ShieldableTransaction for TypedTransaction {
-    fn shield_inputs(&mut self) {
+    fn shield_input(&mut self) {
         match self {
-            Self::Seismic(tx) => tx.shield_inputs(),
+            Self::Seismic(tx) => tx.shield_input(),
             _ => {}
         }
     }
