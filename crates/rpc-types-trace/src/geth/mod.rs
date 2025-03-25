@@ -204,7 +204,9 @@ impl GethTrace {
     pub fn shield_inputs(self) -> Self {
         match self {
             Self::CallTracer(frame) => Self::CallTracer(frame.shield_inputs()),
-            Self::FlatCallTracer(frames) => Self::FlatCallTracer(frames.into_iter().map(|frame| frame.shield_inputs()).collect()),
+            Self::FlatCallTracer(frames) => Self::FlatCallTracer(
+                frames.into_iter().map(|frame| frame.shield_inputs()).collect(),
+            ),
             Self::MuxTracer(frame) => Self::MuxTracer(frame.shield_inputs()),
             // TODO: do we have to shield these?
             Self::FourByteTracer(frame) => Self::FourByteTracer(frame),

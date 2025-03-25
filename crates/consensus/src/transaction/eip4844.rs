@@ -150,11 +150,9 @@ impl TxEip4844Variant {
     }
 }
 
-
 impl crate::transaction::ShieldableTransaction for TxEip4844Variant {
     fn shield_input(&mut self) {}
 }
-
 
 impl Transaction for TxEip4844Variant {
     #[inline]
