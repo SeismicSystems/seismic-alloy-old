@@ -7,7 +7,8 @@
             "input": "0x",
             "to": "0x0024f658a46fbb89d8ac105e98d7ac7cbbaf27c5",
             "type": "CALL",
-            "value": "0x6f05b59d3b20000"
+            "value": "0x6f05b59d3b20000",
+            "txType": 0
         }
     ],
     "from": "0xb436ba50d378d4bbc8660d312a13df6af6e89dfb",
