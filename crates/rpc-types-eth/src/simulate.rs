@@ -13,7 +13,7 @@ pub const MAX_SIMULATE_BLOCKS: u64 = 256;
 #[derive(Clone, Debug, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
-pub struct SimBlock {
+pub struct SimBlock<T = TransactionRequest> {
     /// Modifications to the default block characteristics.
     #[cfg_attr(feature = "serde", serde(default, skip_serializing_if = "Option::is_none"))]
     pub block_overrides: Option<BlockOverrides>,
@@ -22,7 +22,7 @@ pub struct SimBlock {
     pub state_overrides: Option<StateOverride>,
     /// A vector of transactions to be simulated.
     #[cfg_attr(feature = "serde", serde(default))]
-    pub calls: Vec<TransactionRequest>,
+    pub calls: Vec<T>,
 }
 
 impl SimBlock {
