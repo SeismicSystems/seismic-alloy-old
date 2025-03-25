@@ -53,6 +53,13 @@ impl TraceResults {
             r.set_gas_used(gas_used)
         }
     }
+
+    /// Shield the inputs and call stack of a trace results.
+    pub fn shield_inputs(mut self) -> Self {
+        self.trace = self.trace.into_iter().map(|trace| trace.shield_inputs()).collect();
+        self.vm_trace = None;
+        self
+    }
 }
 
 /// A `FullTrace` with an additional transaction hash
@@ -476,6 +483,14 @@ pub struct TransactionTrace {
     pub trace_address: Vec<usize>,
 }
 
+impl TransactionTrace {
+    /// Shield the inputs of a transaction trace.
+    pub fn shield_inputs(mut self) -> Self {
+        self.action = self.action.shield_inputs();
+        // TODO: do we need to shield the result?
+        self
+    }
+}
 /// A wrapper for [TransactionTrace] that includes additional information about the transaction.
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "camelCase")]
