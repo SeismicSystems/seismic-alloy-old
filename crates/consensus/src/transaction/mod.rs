@@ -76,7 +76,7 @@ impl<T: ShieldableTransaction> ShieldableTransaction for Signed<T> {
 #[doc(alias = "Tx")]
 #[auto_impl::auto_impl(&, Arc)]
 pub trait Transaction:
-    Typed2718 + fmt::Debug + any::Any + Send + Sync + 'static + ShieldableTransaction
+    Typed2718 + fmt::Debug + any::Any + Send + Sync + 'static
 {
     /// Get `chain_id`.
     fn chain_id(&self) -> Option<ChainId>;
