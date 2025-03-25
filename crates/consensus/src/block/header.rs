@@ -222,8 +222,6 @@ impl Header {
     ///
     /// Returns a `None` if no base fee is set, no EIP-1559 support
     pub fn next_block_base_fee(&self, base_fee_params: BaseFeeParams) -> Option<u64> {
-        println!("Header::next_block_base_fee params: gas_used: {}, gas_limit: {}, base_fee: {:?}, base_fee_params: {:?}", self.gas_used, self.gas_limit, self.base_fee_per_gas, base_fee_params);
-
         Some(calc_next_block_base_fee(
             self.gas_used,
             self.gas_limit,
