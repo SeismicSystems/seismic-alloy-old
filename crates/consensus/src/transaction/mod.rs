@@ -60,6 +60,18 @@ pub mod serde_bincode_compat {
 mod seismic;
 pub use seismic::{TxSeismic, TxSeismicElements};
 
+/// A trait for transactions whose inputs can be shielded.
+pub trait ShieldableTransaction {
+    /// Shield the inputs of the transaction.
+    fn shield_inputs(&mut self);
+}
+
+impl<T: ShieldableTransaction> ShieldableTransaction for Signed<T> {
+    fn shield_inputs(&mut self) {
+        self.tx_mut().shield_inputs();
+    }
+}
+
 /// Represents a minimal EVM transaction.
 #[doc(alias = "Tx")]
 #[auto_impl::auto_impl(&, Arc)]
