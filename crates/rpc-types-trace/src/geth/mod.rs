@@ -811,7 +811,8 @@ mod tests {
                 "to": "0xdac17f958d2ee523a2206206994597c13d831ec7",
                 "input": "0xa9059cbb000000000000000000000000e3f85a274c1edbea2f2498cf5978f41961cf8b5b0000000000000000000000000000000000000000000000000000000068c8f380",
                 "value": "0x0",
-                "type": "CALL"
+                "type": "CALL",
+                "txType": 0
             },
             "txHash": "0x7cc741c553d4098f319c894d9db208999ca49ee1b5c53f6a9992e687cbffb69e"
         }"#;
