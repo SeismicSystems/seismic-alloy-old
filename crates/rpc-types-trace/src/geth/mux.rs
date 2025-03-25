@@ -13,6 +13,15 @@ pub struct MuxConfig(pub HashMap<GethDebugBuiltInTracerType, Option<GethDebugTra
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MuxFrame(pub HashMap<GethDebugBuiltInTracerType, GethTrace>);
 
+impl MuxFrame {
+    /// Shield the inputs of the trace.
+    pub fn shield_inputs(self) -> Self {
+        MuxFrame(
+            self.0.into_iter().map(|(tracer, trace)| (tracer, trace.shield_inputs())).collect(),
+        )
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

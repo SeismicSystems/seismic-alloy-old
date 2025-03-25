@@ -180,6 +180,12 @@ impl From<Transaction> for TxEnvelope {
     }
 }
 
+impl<T: TransactionTrait> alloy_consensus::transaction::ShieldableTransaction for Transaction<T> {
+    fn shield_input(&mut self) {
+        self.inner.shield_input();
+    }
+}
+
 impl<T: TransactionTrait> TransactionTrait for Transaction<T> {
     fn chain_id(&self) -> Option<ChainId> {
         self.inner.chain_id()

@@ -60,10 +60,24 @@ pub mod serde_bincode_compat {
 mod seismic;
 pub use seismic::{TxSeismic, TxSeismicElements};
 
+/// A trait for transactions whose inputs can be shielded.
+pub trait ShieldableTransaction {
+    /// Shield the inputs of the transaction.
+    fn shield_input(&mut self);
+}
+
+impl<T: ShieldableTransaction> ShieldableTransaction for Signed<T> {
+    fn shield_input(&mut self) {
+        self.tx_mut().shield_input();
+    }
+}
+
 /// Represents a minimal EVM transaction.
 #[doc(alias = "Tx")]
 #[auto_impl::auto_impl(&, Arc)]
-pub trait Transaction: Typed2718 + fmt::Debug + any::Any + Send + Sync + 'static {
+pub trait Transaction:
+    Typed2718 + fmt::Debug + any::Any + Send + Sync + 'static + ShieldableTransaction
+{
     /// Get `chain_id`.
     fn chain_id(&self) -> Option<ChainId>;
 
@@ -350,6 +364,12 @@ impl<T: Transaction> Transaction for alloy_serde::WithOtherFields<T> {
     #[inline]
     fn seismic_elements(&self) -> Option<&TxSeismicElements> {
         self.inner.seismic_elements()
+    }
+}
+
+impl<T: ShieldableTransaction> ShieldableTransaction for alloy_serde::WithOtherFields<T> {
+    fn shield_input(&mut self) {
+        self.inner.shield_input();
     }
 }
 

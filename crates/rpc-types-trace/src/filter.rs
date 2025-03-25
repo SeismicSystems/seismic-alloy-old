@@ -229,7 +229,8 @@ mod tests {
                 "gas": "0x10bfc",
                 "input": "0x",
                 "to": "0x160f5f00288e9e1cc8655b327e081566e580a71d",
-                "value": "0x244b"
+                "value": "0x244b",
+                "txType": 0
             },
             "error": "Reverted",
             "result": {

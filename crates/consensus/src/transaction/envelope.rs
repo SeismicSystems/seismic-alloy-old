@@ -510,6 +510,19 @@ impl Decodable712 for TxEnvelope {
     }
 }
 
+impl crate::transaction::ShieldableTransaction for TxEnvelope {
+    fn shield_input(&mut self) {
+        match self {
+            Self::Legacy(tx) => tx.tx_mut().shield_input(),
+            Self::Seismic(tx) => tx.tx_mut().shield_input(),
+            Self::Eip2930(tx) => tx.tx_mut().shield_input(),
+            Self::Eip1559(tx) => tx.tx_mut().shield_input(),
+            Self::Eip4844(tx) => tx.tx_mut().shield_input(),
+            Self::Eip7702(tx) => tx.tx_mut().shield_input(),
+        }
+    }
+}
+
 impl Transaction for TxEnvelope {
     #[inline]
     fn chain_id(&self) -> Option<ChainId> {

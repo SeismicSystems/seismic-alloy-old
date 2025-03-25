@@ -369,6 +369,12 @@ impl TxSeismic {
     }
 }
 
+impl crate::transaction::ShieldableTransaction for TxSeismic {
+    fn shield_input(&mut self) {
+        self.input = Bytes::new();
+    }
+}
+
 #[cfg(feature = "serde")]
 impl From<Signed<TxSeismic>> for TypedDataRequest {
     fn from(tx: Signed<TxSeismic>) -> Self {
