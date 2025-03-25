@@ -2,6 +2,7 @@
 //! when working with RPC types, such as [Transaction]
 
 use crate::Transaction;
+use alloy_consensus::Typed2718;
 use alloy_network_primitives::TransactionResponse;
 use alloy_primitives::{BlockHash, TxHash};
 
@@ -19,6 +20,8 @@ pub struct TransactionInfo {
     pub block_number: Option<u64>,
     /// Base fee of the block.
     pub base_fee: Option<u128>,
+    /// Transaction type.
+    pub tx_type: Option<isize>,
 }
 
 impl TransactionInfo {
@@ -39,6 +42,7 @@ impl From<&Transaction> for TransactionInfo {
             // We don't know the base fee of the block when we're constructing this from
             // `Transaction`
             base_fee: None,
+            tx_type: Some(tx.ty() as isize),
         }
     }
 }
