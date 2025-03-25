@@ -51,7 +51,7 @@ pub struct CallFrame {
 impl CallFrame {
     /// Shield the inputs of a call frame.
     pub fn shield_inputs(mut self) -> Self {
-        if self.tx_type == alloy_consensus::transaction::TxLegacy::TX_TYPE as isize {
+        if self.tx_type == alloy_consensus::transaction::TxSeismic::TX_TYPE as isize {
             self.input = Bytes::new();
         }
         self
