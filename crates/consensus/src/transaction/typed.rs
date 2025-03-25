@@ -6,7 +6,7 @@ use crate::{
     Transaction, TxEip1559, TxEip2930, TxEip7702, TxEnvelope, TxLegacy, TxType, Typed2718,
 };
 
-use super::{seismic::TxSeismicElements, ShieldableTransaction, TxSeismic};
+use super::{seismic::TxSeismicElements, TxSeismic};
 
 /// The TypedTransaction enum represents all Ethereum transaction request types.
 ///
@@ -163,7 +163,7 @@ impl TypedTransaction {
     }
 }
 
-impl ShieldableTransaction for TypedTransaction {
+impl crate::transaction::ShieldableTransaction for TypedTransaction {
     fn shield_input(&mut self) {
         match self {
             Self::Seismic(tx) => tx.shield_input(),
