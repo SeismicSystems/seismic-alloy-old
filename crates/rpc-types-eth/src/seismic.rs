@@ -39,6 +39,12 @@ pub enum SeismicCallRequest {
     Bytes(Bytes),
 }
 
+impl Default for SeismicCallRequest {
+    fn default() -> Self {
+        SeismicCallRequest::TransactionRequest(WithOtherFields::new(TransactionRequest::default()))
+    }
+}
+
 impl Into<SeismicCallRequest> for TypedDataRequest {
     fn into(self) -> SeismicCallRequest {
         SeismicCallRequest::TypedData(self)
