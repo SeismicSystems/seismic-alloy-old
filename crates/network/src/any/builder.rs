@@ -102,6 +102,17 @@ impl TransactionBuilder<AnyNetwork> for WithOtherFields<TransactionRequest> {
         self.deref_mut().set_access_list(access_list)
     }
 
+    fn seismic_elements(&self) -> Option<&alloy_consensus::transaction::TxSeismicElements> {
+        self.deref().seismic_elements()
+    }
+
+    fn set_seismic_elements(
+        &mut self,
+        seismic_elements: alloy_consensus::transaction::TxSeismicElements,
+    ) {
+        self.deref_mut().set_seismic_elements(seismic_elements);
+    }
+
     fn complete_type(&self, ty: <AnyNetwork as Network>::TxType) -> Result<(), Vec<&'static str>> {
         self.deref().complete_type(ty.try_into().map_err(|_| vec!["supported tx type"])?)
     }

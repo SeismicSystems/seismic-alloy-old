@@ -1,5 +1,4 @@
 //! Transaction types.
-
 use crate::Signed;
 use alloc::vec::Vec;
 use alloy_eips::{eip2930::AccessList, eip7702::SignedAuthorization};
@@ -54,7 +53,23 @@ pub mod serde_bincode_compat {
     pub use super::{
         eip1559::serde_bincode_compat::*, eip2930::serde_bincode_compat::*,
         eip7702::serde_bincode_compat::*, legacy::serde_bincode_compat::*,
+        seismic::serde_bincode_compat::*,
     };
+}
+
+mod seismic;
+pub use seismic::{TxSeismic, TxSeismicElements};
+
+/// A trait for transactions whose inputs can be shielded.
+pub trait ShieldableTransaction {
+    /// Shield the inputs of the transaction.
+    fn shield_input(&mut self);
+}
+
+impl<T: ShieldableTransaction> ShieldableTransaction for Signed<T> {
+    fn shield_input(&mut self) {
+        self.tx_mut().shield_input();
+    }
 }
 
 /// Represents a minimal EVM transaction.
@@ -174,6 +189,11 @@ pub trait Transaction: Typed2718 + fmt::Debug + any::Any + Send + Sync + 'static
     ///
     /// Returns `None` if this transaction is not EIP-7702.
     fn authorization_list(&self) -> Option<&[SignedAuthorization]>;
+
+    /// Returns the seismic elements for the transaction.
+    fn seismic_elements(&self) -> Option<&TxSeismicElements> {
+        None
+    }
 }
 
 /// A signable transaction.
@@ -337,6 +357,17 @@ impl<T: Transaction> Transaction for alloy_serde::WithOtherFields<T> {
     #[inline]
     fn authorization_list(&self) -> Option<&[SignedAuthorization]> {
         self.inner.authorization_list()
+    }
+
+    #[inline]
+    fn seismic_elements(&self) -> Option<&TxSeismicElements> {
+        self.inner.seismic_elements()
+    }
+}
+
+impl<T: ShieldableTransaction> ShieldableTransaction for alloy_serde::WithOtherFields<T> {
+    fn shield_input(&mut self) {
+        self.inner.shield_input();
     }
 }
 

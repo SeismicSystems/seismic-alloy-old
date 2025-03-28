@@ -120,6 +120,7 @@ where
         if let Some(to_fill) = to_fill.0 {
             tx = self.left.fill(to_fill, tx).await?;
         };
+
         if let Some(to_fill) = to_fill.1 {
             tx = self.right.fill(to_fill, tx).await?;
         };

@@ -180,6 +180,14 @@ impl From<Transaction> for TxEnvelope {
     }
 }
 
+impl<T: TransactionTrait + alloy_consensus::transaction::ShieldableTransaction>
+    alloy_consensus::transaction::ShieldableTransaction for Transaction<T>
+{
+    fn shield_input(&mut self) {
+        self.inner.shield_input();
+    }
+}
+
 impl<T: TransactionTrait> TransactionTrait for Transaction<T> {
     fn chain_id(&self) -> Option<ChainId> {
         self.inner.chain_id()
@@ -248,9 +256,15 @@ impl<T: TransactionTrait> TransactionTrait for Transaction<T> {
     fn authorization_list(&self) -> Option<&[SignedAuthorization]> {
         self.inner.authorization_list()
     }
+
+    fn seismic_elements(&self) -> Option<&alloy_consensus::transaction::TxSeismicElements> {
+        self.inner.seismic_elements()
+    }
 }
 
-impl<T: TransactionTrait + Encodable2718> TransactionResponse for Transaction<T> {
+impl<T: TransactionTrait + Encodable2718 + alloy_consensus::transaction::ShieldableTransaction>
+    TransactionResponse for Transaction<T>
+{
     fn tx_hash(&self) -> B256 {
         self.inner.trie_hash()
     }

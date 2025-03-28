@@ -25,6 +25,7 @@ serde_json = { workspace = true, features = ["alloc"] }
 
 # arbitrary
 arbitrary = { workspace = true, features = ["derive"], optional = true }
+seismic-enclave.workspace = true
 
 [dev-dependencies]
 alloy-primitives = { workspace = true, features = [

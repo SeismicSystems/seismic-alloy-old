@@ -7,7 +7,6 @@ use core::{
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::Value;
-
 #[cfg(any(test, feature = "arbitrary"))]
 mod arbitrary_;
 

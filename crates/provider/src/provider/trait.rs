@@ -24,6 +24,7 @@ use alloy_rpc_types_eth::{
     FilterChanges, Index, Log, SyncStatus,
 };
 use alloy_transport::{BoxTransport, Transport, TransportResult};
+use seismic_enclave::PublicKey;
 use serde_json::value::RawValue;
 use std::borrow::Cow;
 
@@ -153,6 +154,21 @@ pub trait Provider<T: Transport + Clone = BoxTransport, N: Network = Ethereum>:
     #[doc(alias = "call_with_overrides")]
     fn call<'req>(&self, tx: &'req N::TransactionRequest) -> EthCall<'req, T, N, Bytes> {
         EthCall::new(self.weak_client(), tx).block(BlockNumberOrTag::Pending.into())
+    }
+
+    /// Simulate a seismic transaction signed or unsigned
+    async fn seismic_call(&self, tx: SendableTx<N>) -> TransportResult<Bytes> {
+        match tx {
+            SendableTx::Builder(tx) => {
+                let output = self.client().request("eth_call", (tx,)).await?;
+                Ok(output)
+            }
+            SendableTx::Envelope(tx) => {
+                let encoded_tx = tx.encoded_2718();
+                let output = self.client().request("eth_call", (encoded_tx,)).await?;
+                Ok(output)
+            }
+        }
     }
 
     /// Executes an arbitrary number of transactions on top of the requested state.
@@ -790,7 +806,6 @@ pub trait Provider<T: Transport + Clone = BoxTransport, N: Network = Ethereum>:
         // Make sure to initialize heartbeat before we submit transaction, so that
         // we don't miss it if user will subscriber to it immediately after sending.
         let _handle = self.root().get_heart();
-
         match tx {
             SendableTx::Builder(mut tx) => {
                 alloy_network::TransactionBuilder::prep_for_submission(&mut tx);
@@ -1063,6 +1078,12 @@ pub trait Provider<T: Transport + Clone = BoxTransport, N: Network = Ethereum>:
     #[inline]
     fn transaction_request(&self) -> N::TransactionRequest {
         Default::default()
+    }
+
+    /// Get the tee public key.
+    #[inline]
+    fn get_tee_pubkey(&self) -> ProviderCall<T, NoParams, PublicKey> {
+        self.client().request_noparams("seismic_getTeePublicKey").into()
     }
 }
 
@@ -1837,6 +1858,7 @@ mod tests {
         feature = "reqwest-rustls-tls",
         feature = "reqwest-native-tls",
     ))]
+    #[ignore = "this api hit its usage limit"]
     async fn call_mainnet() {
         use alloy_network::TransactionBuilder;
         use alloy_sol_types::SolValue;

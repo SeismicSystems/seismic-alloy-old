@@ -99,9 +99,21 @@ impl TransactionBuilder<Ethereum> for TransactionRequest {
         self.access_list = Some(access_list);
     }
 
+    fn seismic_elements(&self) -> Option<&alloy_consensus::transaction::TxSeismicElements> {
+        self.seismic_elements.as_ref()
+    }
+
+    fn set_seismic_elements(
+        &mut self,
+        seismic_elements: alloy_consensus::transaction::TxSeismicElements,
+    ) {
+        self.seismic_elements = Some(seismic_elements);
+    }
+
     fn complete_type(&self, ty: TxType) -> Result<(), Vec<&'static str>> {
         match ty {
             TxType::Legacy => self.complete_legacy(),
+            TxType::Seismic => self.complete_seismic(),
             TxType::Eip2930 => self.complete_2930(),
             TxType::Eip1559 => self.complete_1559(),
             TxType::Eip4844 => self.complete_4844(),

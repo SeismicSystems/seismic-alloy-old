@@ -43,6 +43,19 @@ pub struct CallFrame {
     /// The type of the call.
     #[serde(rename = "type")]
     pub typ: String,
+    /// Transaction type. Seismic tx's will have input shielded (set to empty bytes)
+    #[serde(rename = "txType")]
+    pub tx_type: isize,
+}
+
+impl CallFrame {
+    /// Shield the inputs of a call frame.
+    pub fn shield_inputs(mut self) -> Self {
+        if self.tx_type == alloy_consensus::transaction::TxSeismic::TX_TYPE as isize {
+            self.input = Bytes::new();
+        }
+        self
+    }
 }
 
 /// Represents a recorded log that is emitted during a trace call.

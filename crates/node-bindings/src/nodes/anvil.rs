@@ -255,7 +255,7 @@ impl Anvil {
 
     /// Consumes the builder and spawns `anvil`. If spawning fails, returns an error.
     pub fn try_spawn(self) -> Result<AnvilInstance, NodeError> {
-        let mut cmd = self.program.as_ref().map_or_else(|| Command::new("anvil"), Command::new);
+        let mut cmd = self.program.as_ref().map_or_else(|| Command::new("sanvil"), Command::new);
         cmd.stdout(std::process::Stdio::piped()).stderr(std::process::Stdio::inherit());
         let mut port = self.port.unwrap_or_default();
         cmd.arg("-p").arg(port.to_string());

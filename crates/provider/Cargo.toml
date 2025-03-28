@@ -19,6 +19,9 @@ rustdoc-args = ["--cfg", "docsrs"]
 workspace = true
 
 [dependencies]
+# seismic dependencies
+seismic-enclave.workspace = true
+
 alloy-eips.workspace = true
 alloy-consensus.workspace = true
 alloy-json-rpc.workspace = true

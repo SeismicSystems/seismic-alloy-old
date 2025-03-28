@@ -62,10 +62,11 @@ where
             return FillerControlFlow::Ready;
         }
 
-        match tx.complete_preferred() {
+        let res = match tx.complete_preferred() {
             Ok(_) => FillerControlFlow::Ready,
             Err(e) => FillerControlFlow::Missing(vec![("Wallet", e)]),
-        }
+        };
+        res
     }
 
     fn fill_sync(&self, tx: &mut SendableTx<N>) {

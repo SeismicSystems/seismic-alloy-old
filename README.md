@@ -1,37 +1,79 @@
-# Alloy
+# Seismic Alloy
 
-Alloy connects applications to blockchains.
+This repository contains Seismic's fork of Alloy
 
-Alloy is a rewrite of [`ethers-rs`] from the ground up, with exciting new
-features, high performance, and excellent [docs](https://docs.rs/alloy).
+The upstream repository lives [here](https://github.com/alloy-rs/alloy). This fork is up-to-date with it through commit `de01884`. You can see this by viewing the [main](https://github.com/SeismicSystems/seismic-alloy/tree/main) branch on this repository
 
-We also have a [book](https://alloy.rs/) on all things Alloy and many [examples](https://github.com/alloy-rs/examples) to help you get started.
+You can view all of our changes vs. upstream on this [pull request](https://github.com/SeismicSystems/seismic-alloy/pull/2). The sole purpose of this PR is display our diff; it will never be merged in to the main branch of this repo
 
-[![Telegram chat][telegram-badge]][telegram-url]
+## Main Changes
 
-[`ethers-rs`]: https://github.com/gakonst/ethers-rs
-[telegram-badge]: https://img.shields.io/endpoint?color=neon&style=for-the-badge&url=https%3A%2F%2Ftg.sumanjay.workers.dev%2Fethers_rs
-[telegram-url]: https://t.me/ethers_rs
+### Seismic Transaction Type
 
-## Installation
+This new EIP-2718 transaction type (`0x4a` or `74`) introduces additional fields that Seismic uses to secure its blockchain.
 
-Alloy consists of a number of crates that provide a range of functionality essential for interfacing with any Ethereum-based blockchain.
+#### Fields
 
-The easiest way to get started is to add the `alloy` crate with the `full` feature flag from the command-line using Cargo:
+- **encryption_pubkey**  
+  Represents the EOA's ephemerally generated public key. **Note:** This is _not_ the public key associated with the Ethereum address. When a Seismic transaction is sent to the chain, its calldata is encrypted using a shared secret derived from the network's key and the ephemeral key. This shared secret is included in the transaction so the network can decrypt the EOA's calldata (located in the `input` field, as with other transactions).
 
-```sh
-cargo add alloy --features full
-```
+- **message_version**  
+  Determines the method used to send the transaction. Seismic currently supports two approaches:
 
-Alternatively, you can add the following to your `Cargo.toml` file:
+  1. **Standard Method:**  
+     The transaction is signed using `signTransaction` and sent as raw transaction bytes (indicated by `0`).
 
-```toml
-alloy = { version = "0.3", features = ["full"] }
-```
+  2. **EIP-712 Typed Data:**  
+     The transaction is sent as EIP-712 signed typed data (indicated by `2`).
 
-For a more fine-grained control over the features you wish to include, you can add the individual crates to your `Cargo.toml` file, or use the `alloy` crate with the features you need.
+  > **Note:**  
+  > We added support for EIP-712 because browser extension wallets couldn’t sign Seismic transactions using the traditional method. This support might be removed in the future. The value `1` is reserved for supporting transactions signed via `personal_sign` (for example, by hardware wallets).
 
-A comprehensive list of available features can be found on [docs.rs](https://docs.rs/crate/alloy/latest/features) or in the [`alloy` crate's `Cargo.toml`](https://github.com/alloy-rs/alloy/blob/main/crates/alloy/Cargo.toml).
+### New Enums for Seismic RPC Extensions
+
+Seismic extends Ethereum's RPC methods by introducing two new enums:
+
+- `SeismicCallRequest` for `eth_call`
+- `SeismicRawTxRequest` for `eth_sendRawTransaction`
+
+#### SeismicCallRequest
+
+On Seismic, you can perform an `eth_call` in two ways:
+
+- **Standard Call:**  
+  Submit a transaction request normally. However, if you set the `from` field, it will be overridden to the zero address to prevent users from making calls from addresses they do not own.
+
+- **Signed Call:**  
+  Submit a transaction request accompanied by a signature. In this case, the `from` field is populated with the signer's address and passed to smart contracts, ensuring that `msg.sender` cannot be spoofed. A signed call can be made using either:
+
+  - A raw transaction payload (e.g., bytes)
+  - EIP-712 signed typed data (to support browser wallets)
+
+#### SeismicRawTxRequest
+
+For sending a raw transaction on Seismic, you have two options:
+
+- **Standard Method:**  
+  Use raw transaction bytes.
+- **EIP-712 Method:**  
+  Send the transaction using EIP-712 signed typed data, as discussed in the `message_version` section.
+
+### New Provider for Shielded Transaction
+
+- When a TxSeismic transaction is created, we:
+  1. Generate an ephemeral key pair
+  2. Use the ephemeral private key and network's public key to generate a shared secret via ECDH
+  3. Use the shared secret to encrypt the transaction's calldata
+  4. Include the ephemeral public key in the transaction so the network can decrypt the calldata
+- Support for decrypting `eth_call` output. When a signed `eth_call` is made, the network encrypts the output using the ephemeral public key provided in the request. The client can then decrypt this output using the ephemeral private key it generated
+- Please see `create_seismic_provider` for detailed provider configuration for shielded transaction.
+
+## Structure
+
+Seismic's forks of the [reth](https://github.com/paradigmxyz/reth) stack all have the same branch structure:
+
+- `main` or `master`: this branch only consists of commits from the upstream repository. However it will rarely be up-to-date with upstream. The latest commit from this branch reflects how recently Seismic has merged in upstream commits to the seismic branch
+- `seismic`: the default and production branch for these repositories. This includes all Seismic-specific code essential to make our network run
 
 ## Overview
 
@@ -52,7 +94,7 @@ This repository contains the following crates:
 - [`alloy-rpc-client`] - Low-level Ethereum JSON-RPC client implementation
 - [`alloy-rpc-types`] - Meta-crate for all Ethereum JSON-RPC types
   - [`alloy-rpc-types-admin`] - Types for the `admin` Ethereum JSON-RPC namespace
-  - [`alloy-rpc-types-anvil`] - Types for the [Anvil] development node's Ethereum JSON-RPC namespace
+  - [`alloy-rpc-types-anvil`] - Types for the [seismic-anvil] development node's Ethereum JSON-RPC namespace
   - [`alloy-rpc-types-any`] - Types for JSON-RPC namespaces across multiple networks
   - [`alloy-rpc-types-beacon`] - Types for the [Ethereum Beacon Node API][beacon-apis]
   - [`alloy-rpc-types-debug`] - Types for the `debug` Ethereum JSON-RPC namespace
@@ -73,43 +115,42 @@ This repository contains the following crates:
   - [`alloy-transport-ipc`] - IPC transport implementation
   - [`alloy-transport-ws`] - WS transport implementation
 
-[`alloy`]: https://github.com/alloy-rs/alloy/tree/main/crates/alloy
+[`alloy`]: https://github.com/SeismicSystems/seismic-alloy/tree/seismic/crates/alloy
 [`alloy-core`]: https://docs.rs/alloy-core
-[`alloy-consensus`]: https://github.com/alloy-rs/alloy/tree/main/crates/consensus
-[`alloy-consensus-any`]: https://github.com/alloy-rs/alloy/tree/main/crates/consensus-any
-[`alloy-contract`]: https://github.com/alloy-rs/alloy/tree/main/crates/contract
-[`alloy-eips`]: https://github.com/alloy-rs/alloy/tree/main/crates/eips
-[`alloy-genesis`]: https://github.com/alloy-rs/alloy/tree/main/crates/genesis
-[`alloy-json-rpc`]: https://github.com/alloy-rs/alloy/tree/main/crates/json-rpc
-[`alloy-network`]: https://github.com/alloy-rs/alloy/tree/main/crates/network
-[`alloy-network-primitives`]: https://github.com/alloy-rs/alloy/tree/main/crates/network-primitives
-[`alloy-node-bindings`]: https://github.com/alloy-rs/alloy/tree/main/crates/node-bindings
-[`alloy-provider`]: https://github.com/alloy-rs/alloy/tree/main/crates/provider
-[`alloy-pubsub`]: https://github.com/alloy-rs/alloy/tree/main/crates/pubsub
-[`alloy-rpc-client`]: https://github.com/alloy-rs/alloy/tree/main/crates/rpc-client
-[`alloy-rpc-types`]: https://github.com/alloy-rs/alloy/tree/main/crates/rpc-types
-[`alloy-rpc-types-admin`]: https://github.com/alloy-rs/alloy/tree/main/crates/rpc-types-admin
-[`alloy-rpc-types-anvil`]: https://github.com/alloy-rs/alloy/tree/main/crates/rpc-types-anvil
-[`alloy-rpc-types-any`]: https://github.com/alloy-rs/alloy/tree/main/crates/rpc-types-any
-[`alloy-rpc-types-beacon`]: https://github.com/alloy-rs/alloy/tree/main/crates/rpc-types-beacon
-[`alloy-rpc-types-debug`]: https://github.com/alloy-rs/alloy/tree/main/crates/rpc-types-debug
-[`alloy-rpc-types-engine`]: https://github.com/alloy-rs/alloy/tree/main/crates/rpc-types-engine
-[`alloy-rpc-types-eth`]: https://github.com/alloy-rs/alloy/tree/main/crates/rpc-types-eth
-[`alloy-rpc-types-mev`]: https://github.com/alloy-rs/alloy/tree/main/crates/rpc-types-mev
-[`alloy-rpc-types-trace`]: https://github.com/alloy-rs/alloy/tree/main/crates/rpc-types-trace
-[`alloy-rpc-types-txpool`]: https://github.com/alloy-rs/alloy/tree/main/crates/rpc-types-txpool
-[`alloy-serde`]: https://github.com/alloy-rs/alloy/tree/main/crates/serde
-[`alloy-signer`]: https://github.com/alloy-rs/alloy/tree/main/crates/signer
-[`alloy-signer-aws`]: https://github.com/alloy-rs/alloy/tree/main/crates/signer-aws
-[`alloy-signer-gcp`]: https://github.com/alloy-rs/alloy/tree/main/crates/signer-gcp
-[`alloy-signer-ledger`]: https://github.com/alloy-rs/alloy/tree/main/crates/signer-ledger
-[`alloy-signer-local`]: https://github.com/alloy-rs/alloy/tree/main/crates/signer-local
-[`alloy-signer-trezor`]: https://github.com/alloy-rs/alloy/tree/main/crates/signer-trezor
-[`alloy-transport`]: https://github.com/alloy-rs/alloy/tree/main/crates/transport
-[`alloy-transport-http`]: https://github.com/alloy-rs/alloy/tree/main/crates/transport-http
-[`alloy-transport-ipc`]: https://github.com/alloy-rs/alloy/tree/main/crates/transport-ipc
-[`alloy-transport-ws`]: https://github.com/alloy-rs/alloy/tree/main/crates/transport-ws
-
+[`alloy-consensus`]: https://github.com/SeismicSystems/seismic-alloy/tree/seismic/crates/consensus
+[`alloy-consensus-any`]: https://github.com/SeismicSystems/seismic-alloy/tree/seismic/crates/consensus-any
+[`alloy-contract`]: https://github.com/SeismicSystems/seismic-alloy/tree/seismic/crates/contract
+[`alloy-eips`]: https://github.com/SeismicSystems/seismic-alloy/tree/seismic/crates/eips
+[`alloy-genesis`]: https://github.com/SeismicSystems/seismic-alloy/tree/seismic/crates/genesis
+[`alloy-json-rpc`]: https://github.com/SeismicSystems/seismic-alloy/tree/seismic/crates/json-rpc
+[`alloy-network`]: https://github.com/SeismicSystems/seismic-alloy/tree/seismic/crates/network
+[`alloy-network-primitives`]: https://github.com/SeismicSystems/seismic-alloy/tree/seismic/crates/network-primitives
+[`alloy-node-bindings`]: https://github.com/SeismicSystems/seismic-alloy/tree/seismic/crates/node-bindings
+[`alloy-provider`]: https://github.com/SeismicSystems/seismic-alloy/tree/seismic/crates/provider
+[`alloy-pubsub`]: https://github.com/SeismicSystems/seismic-alloy/tree/seismic/crates/pubsub
+[`alloy-rpc-client`]: https://github.com/SeismicSystems/seismic-alloy/tree/seismic/crates/rpc-client
+[`alloy-rpc-types`]: https://github.com/SeismicSystems/seismic-alloy/tree/seismic/crates/rpc-types
+[`alloy-rpc-types-admin`]: https://github.com/SeismicSystems/seismic-alloy/tree/seismic/crates/rpc-types-admin
+[`alloy-rpc-types-anvil`]: https://github.com/SeismicSystems/seismic-alloy/tree/seismic/crates/rpc-types-anvil
+[`alloy-rpc-types-any`]: https://github.com/SeismicSystems/seismic-alloy/tree/seismic/crates/rpc-types-any
+[`alloy-rpc-types-beacon`]: https://github.com/SeismicSystems/seismic-alloy/tree/seismic/crates/rpc-types-beacon
+[`alloy-rpc-types-debug`]: https://github.com/SeismicSystems/seismic-alloy/tree/seismic/crates/rpc-types-debug
+[`alloy-rpc-types-engine`]: https://github.com/SeismicSystems/seismic-alloy/tree/seismic/crates/rpc-types-engine
+[`alloy-rpc-types-eth`]: https://github.com/SeismicSystems/seismic-alloy/tree/seismic/crates/rpc-types-eth
+[`alloy-rpc-types-mev`]: https://github.com/SeismicSystems/seismic-alloy/tree/seismic/crates/rpc-types-mev
+[`alloy-rpc-types-trace`]: https://github.com/SeismicSystems/seismic-alloy/tree/seismic/crates/rpc-types-trace
+[`alloy-rpc-types-txpool`]: https://github.com/SeismicSystems/seismic-alloy/tree/seismic/crates/rpc-types-txpool
+[`alloy-serde`]: https://github.com/SeismicSystems/seismic-alloy/tree/seismic/crates/serde
+[`alloy-signer`]: https://github.com/SeismicSystems/seismic-alloy/tree/seismic/crates/signer
+[`alloy-signer-aws`]: https://github.com/SeismicSystems/seismic-alloy/tree/seismic/crates/signer-aws
+[`alloy-signer-gcp`]: https://github.com/SeismicSystems/seismic-alloy/tree/seismic/crates/signer-gcp
+[`alloy-signer-ledger`]: https://github.com/SeismicSystems/seismic-alloy/tree/seismic/crates/signer-ledger
+[`alloy-signer-local`]: https://github.com/SeismicSystems/seismic-alloy/tree/seismic/crates/signer-local
+[`alloy-signer-trezor`]: https://github.com/SeismicSystems/seismic-alloy/tree/seismic/crates/signer-trezor
+[`alloy-transport`]: https://github.com/SeismicSystems/seismic-alloy/tree/seismic/crates/transport
+[`alloy-transport-http`]: https://github.com/SeismicSystems/seismic-alloy/tree/seismic/crates/transport-http
+[`alloy-transport-ipc`]: https://github.com/SeismicSystems/seismic-alloy/tree/seismic/crates/transport-ipc
+[`alloy-transport-ws`]: https://github.com/SeismicSystems/seismic-alloy/tree/seismic/crates/transport-ws
 [publish-subscribe]: https://en.wikipedia.org/wiki/Publish%E2%80%93subscribe_pattern
 [AWS KMS]: https://aws.amazon.com/kms
 [GCP KMS]: https://cloud.google.com/kms
@@ -117,49 +158,7 @@ This repository contains the following crates:
 [Trezor]: https://trezor.io
 [Serde]: https://serde.rs
 [beacon-apis]: https://ethereum.github.io/beacon-APIs
-[Anvil]: https://github.com/foundry-rs/foundry
-
-## Supported Rust Versions (MSRV)
-
-<!--
-When updating this, also update:
-- clippy.toml
-- Cargo.toml
-- .github/workflows/ci.yml
--->
-
-The current MSRV (minimum supported rust version) is 1.81.
-
-Alloy will keep a rolling MSRV policy of **at least** two versions behind the
-latest stable release (so if the latest stable release is 1.58, we would
-support 1.56).
-
-Note that the MSRV is not increased automatically, and only as part of a patch
-(pre-1.0) or minor (post-1.0) release.
-
-## Contributing
-
-Thanks for your help improving the project! We are so happy to have you! We have
-[a contributing guide](./CONTRIBUTING.md) to help you get involved in the
-Alloy project.
-
-Pull requests will not be merged unless CI passes, so please ensure that your
-contribution follows the linting rules and passes clippy.
-
-## Note on `no_std`
-
-Because these crates are primarily network-focused, we do not intend to support
-`no_std` for most of them at this time.
-
-The following crates support `no_std`:
-
-- alloy-eips
-- alloy-genesis
-- alloy-serde
-- alloy-consensus
-
-If you would like to add `no_std` support to a crate, please make sure to update
-`scripts/check_no_std.sh` as well.
+[seismic-anvil]: https://github.com/SeismicSystems/seismic-foundry
 
 ## Credits
 
@@ -171,6 +170,7 @@ None of these crates would have been possible without the great work done in:
 - [`ethabi`](https://github.com/rust-ethereum/ethabi)
 - [`ethcontract-rs`](https://github.com/gnosis/ethcontract-rs/)
 - [`guac_rs`](https://github.com/althea-net/guac_rs/)
+- and of couse [`alloy`](https://github.com/alloy-rs/alloy/)
 
 #### License
 

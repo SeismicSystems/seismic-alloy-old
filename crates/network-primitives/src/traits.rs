@@ -63,7 +63,9 @@ pub trait ReceiptResponse {
 }
 
 /// Transaction JSON-RPC response. Aggregates transaction data with its block and signer context.
-pub trait TransactionResponse: Transaction {
+pub trait TransactionResponse:
+    Transaction + alloy_consensus::transaction::ShieldableTransaction
+{
     /// Hash of the transaction
     #[doc(alias = "transaction_hash")]
     fn tx_hash(&self) -> TxHash;

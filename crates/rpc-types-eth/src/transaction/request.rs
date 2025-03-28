@@ -2,6 +2,7 @@
 
 use crate::{transaction::AccessList, BlobTransactionSidecar, Transaction, TransactionTrait};
 use alloy_consensus::{
+    transaction::{TxSeismic, TxSeismicElements},
     TxEip1559, TxEip2930, TxEip4844, TxEip4844Variant, TxEip4844WithSidecar, TxEip7702, TxEnvelope,
     TxLegacy, TxType, Typed2718, TypedTransaction,
 };
@@ -132,6 +133,12 @@ pub struct TransactionRequest {
     /// Authorization list for for EIP-7702 transactions.
     #[cfg_attr(feature = "serde", serde(default, skip_serializing_if = "Option::is_none"))]
     pub authorization_list: Option<Vec<SignedAuthorization>>,
+    /// Seismic tx encryption public key
+    #[cfg_attr(
+        feature = "serde",
+        serde(default, flatten, skip_serializing_if = "Option::is_none")
+    )]
+    pub seismic_elements: Option<TxSeismicElements>,
 }
 
 impl TransactionRequest {
@@ -183,6 +190,7 @@ impl TransactionRequest {
             transaction_type: Some(tx_type),
             sidecar: None,
             authorization_list,
+            seismic_elements: tx.seismic_elements().cloned(),
         }
     }
 
@@ -443,6 +451,27 @@ impl TransactionRequest {
         })
     }
 
+    /// Build a seismic transaction.
+    ///
+    /// Returns an error if required fields are missing.
+    /// Use `complete_seismic` to check if the request can be built.
+    fn build_seismic(self) -> Result<TxSeismic, &'static str> {
+        let checked_to = self.to.ok_or("Missing 'to' field for seismic transaction.")?;
+
+        Ok(TxSeismic {
+            chain_id: self.chain_id.ok_or("Missing 'chain_id' field for seismic transaction.")?,
+            nonce: self.nonce.ok_or("Missing 'nonce' field for seismic transaction.")?,
+            gas_price: self.gas_price.ok_or("Missing 'gas_price' for seismic transaction.")?,
+            gas_limit: self.gas.ok_or("Missing 'gas_limit' for seismic transaction.")?,
+            to: checked_to,
+            value: self.value.unwrap_or_default(),
+            input: self.input.into_input().unwrap_or_default(),
+            seismic_elements: self
+                .seismic_elements
+                .ok_or("Missing 'seismic_elements' for seismic transaction.")?,
+        })
+    }
+
     fn check_reqd_fields(&self) -> Vec<&'static str> {
         let mut missing = Vec::with_capacity(12);
         if self.nonce.is_none() {
@@ -460,6 +489,18 @@ impl TransactionRequest {
     fn check_legacy_fields(&self, missing: &mut Vec<&'static str>) {
         if self.gas_price.is_none() {
             missing.push("gas_price");
+        }
+    }
+
+    fn check_seismic_fields(&self, missing: &mut Vec<&'static str>) {
+        if self.gas_price.is_none() {
+            missing.push("gas_price");
+        }
+        if self.chain_id.is_none() {
+            missing.push("chain_id");
+        }
+        if self.seismic_elements.is_none() {
+            missing.push("seismic_elements");
         }
     }
 
@@ -513,6 +554,16 @@ impl TransactionRequest {
                 self.blob_versioned_hashes = None;
                 self.sidecar = None;
             }
+            TxType::Seismic => {
+                self.gas_price = None;
+                self.max_fee_per_gas = None;
+                self.max_priority_fee_per_gas = None;
+                self.max_fee_per_blob_gas = None;
+                self.blob_versioned_hashes = None;
+                self.sidecar = None;
+                self.access_list = None;
+                self.authorization_list = None;
+            }
         }
     }
 
@@ -525,7 +576,9 @@ impl TransactionRequest {
     /// - Legacy if gas_price is set and access_list is unset
     /// - EIP-1559 in all other cases
     pub const fn preferred_type(&self) -> TxType {
-        if self.authorization_list.is_some() {
+        if self.is_seismic() {
+            TxType::Seismic
+        } else if self.authorization_list.is_some() {
             TxType::Eip7702
         } else if self.sidecar.is_some() || self.max_fee_per_blob_gas.is_some() {
             TxType::Eip4844
@@ -548,6 +601,7 @@ impl TransactionRequest {
         let pref = self.preferred_type();
         if let Err(missing) = match pref {
             TxType::Legacy => self.complete_legacy(),
+            TxType::Seismic => self.complete_seismic(),
             TxType::Eip2930 => self.complete_2930(),
             TxType::Eip1559 => self.complete_1559(),
             TxType::Eip4844 => self.complete_4844(),
@@ -645,12 +699,26 @@ impl TransactionRequest {
         }
     }
 
+    /// Check if all necessary keys are present to build a seismic transaction,
+    /// returning a list of keys that are missing.
+    pub fn complete_seismic(&self) -> Result<(), Vec<&'static str>> {
+        let mut missing = self.check_reqd_fields();
+        self.check_seismic_fields(&mut missing);
+
+        if missing.is_empty() {
+            Ok(())
+        } else {
+            Err(missing)
+        }
+    }
+
     /// Return the tx type this request can be built as. Computed by checking
     /// the preferred type, and then checking for completeness.
     pub fn buildable_type(&self) -> Option<TxType> {
         let pref = self.preferred_type();
         match pref {
             TxType::Legacy => self.complete_legacy().ok(),
+            TxType::Seismic => self.complete_seismic().ok(), // the same as legacy
             TxType::Eip2930 => self.complete_2930().ok(),
             TxType::Eip1559 => self.complete_1559().ok(),
             TxType::Eip4844 => self.complete_4844().ok(),
@@ -670,6 +738,7 @@ impl TransactionRequest {
 
         Ok(match tx_type {
             TxType::Legacy => self.build_legacy().expect("checked)").into(),
+            TxType::Seismic => self.build_seismic().expect("checked)").into(),
             TxType::Eip2930 => self.build_2930().expect("checked)").into(),
             TxType::Eip1559 => self.build_1559().expect("checked)").into(),
             // `sidecar` is a hard requirement since this must be a _sendable_ transaction.
@@ -692,6 +761,7 @@ impl TransactionRequest {
     pub fn build_consensus_tx(self) -> Result<TypedTransaction, BuildTransactionErr> {
         match self.preferred_type() {
             TxType::Legacy => self.clone().build_legacy().map(Into::into),
+            TxType::Seismic => self.clone().build_seismic().map(Into::into),
             TxType::Eip2930 => self.clone().build_2930().map(Into::into),
             TxType::Eip1559 => self.clone().build_1559().map(Into::into),
             TxType::Eip4844 => self.clone().build_4844_variant().map(Into::into),
@@ -703,6 +773,11 @@ impl TransactionRequest {
     /// Converts the transaction request into a `BuildTransactionErr` with the given message.
     fn into_tx_err(self, message: &'static str) -> BuildTransactionErr {
         BuildTransactionErr { tx: self, error: message.to_string() }
+    }
+
+    /// Returns true if the transaction is a seismic transaction.
+    pub const fn is_seismic(&self) -> bool {
+        self.seismic_elements.is_some()
     }
 }
 
@@ -892,10 +967,31 @@ impl From<TxEip7702> for TransactionRequest {
     }
 }
 
+impl From<TxSeismic> for TransactionRequest {
+    fn from(tx: TxSeismic) -> Self {
+        let ty = tx.ty();
+        let TxSeismic { chain_id, nonce, gas_price, gas_limit, to, value, input, seismic_elements } =
+            tx;
+        Self {
+            to: Some(to.into()),
+            gas_price: Some(gas_price),
+            gas: Some(gas_limit),
+            value: Some(value),
+            input: input.into(),
+            nonce: Some(nonce),
+            chain_id: Some(chain_id),
+            transaction_type: Some(ty),
+            seismic_elements: Some(seismic_elements),
+            ..Default::default()
+        }
+    }
+}
+
 impl From<TypedTransaction> for TransactionRequest {
     fn from(tx: TypedTransaction) -> Self {
         match tx {
             TypedTransaction::Legacy(tx) => tx.into(),
+            TypedTransaction::Seismic(tx) => tx.into(),
             TypedTransaction::Eip2930(tx) => tx.into(),
             TypedTransaction::Eip1559(tx) => tx.into(),
             TypedTransaction::Eip4844(tx) => tx.into(),
@@ -1120,7 +1216,7 @@ pub struct BuildTransactionErr<T = TransactionRequest> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use alloy_primitives::b256;
+    use alloy_primitives::{aliases::U96, b256, hex};
     use alloy_serde::WithOtherFields;
     use assert_matches::assert_matches;
     use similar_asserts::assert_eq;

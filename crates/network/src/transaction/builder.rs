@@ -248,6 +248,30 @@ pub trait TransactionBuilder<N: Network>: Default + Sized + Send + Sync + 'stati
         self.set_max_priority_fee_per_gas(max_priority_fee_per_gas);
         self
     }
+
+    /// Get the seismic elements for the transaction.
+    fn seismic_elements(&self) -> Option<&alloy_consensus::transaction::TxSeismicElements>;
+
+    /// Set the seismic elements for the transaction.
+    fn set_seismic_elements(
+        &mut self,
+        seismic_elements: alloy_consensus::transaction::TxSeismicElements,
+    );
+
+    /// Builder pattern for setting the seismic elements.
+    fn with_seismic_elements(
+        mut self,
+        seismic_elements: alloy_consensus::transaction::TxSeismicElements,
+    ) -> Self {
+        self.set_seismic_elements(seismic_elements);
+        self
+    }
+
+    /// Returns true if the transaction is a seismic transaction.
+    fn is_seismic(&self) -> bool {
+        self.seismic_elements().is_some()
+    }
+
     /// Get the gas limit for the transaction.
     fn gas_limit(&self) -> Option<u64>;
 

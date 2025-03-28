@@ -58,6 +58,15 @@ impl From<AnyTxEnvelope> for WithOtherFields<TransactionRequest> {
     }
 }
 
+impl alloy_consensus::transaction::ShieldableTransaction for AnyTypedTransaction {
+    fn shield_input(&mut self) {
+        match self {
+            Self::Ethereum(inner) => inner.shield_input(),
+            Self::Unknown(inner) => inner.shield_input(),
+        }
+    }
+}
+
 impl TransactionTrait for AnyTypedTransaction {
     #[inline]
     fn chain_id(&self) -> Option<ChainId> {
@@ -263,6 +272,15 @@ impl Decodable2718 for AnyTxEnvelope {
 
     fn fallback_decode(buf: &mut &[u8]) -> alloy_eips::eip2718::Eip2718Result<Self> {
         TxEnvelope::fallback_decode(buf).map(Self::Ethereum)
+    }
+}
+
+impl alloy_consensus::transaction::ShieldableTransaction for AnyTxEnvelope {
+    fn shield_input(&mut self) {
+        match self {
+            Self::Ethereum(inner) => inner.shield_input(),
+            Self::Unknown(inner) => inner.shield_input(),
+        }
     }
 }
 
