@@ -2,8 +2,8 @@
 
 use crate::Transaction;
 use alloc::{collections::BTreeMap, vec::Vec};
-use alloy_consensus::{BlockHeader, Sealed, TxEnvelope};
-use alloy_eips::eip4895::Withdrawals;
+use alloy_consensus::{error::ValueError, BlockBody, BlockHeader, Sealed, TxEnvelope};
+use alloy_eips::{eip4895::Withdrawals, eip7840::BlobParams, Encodable2718};
 use alloy_network_primitives::{
     BlockResponse, BlockTransactions, HeaderResponse, TransactionResponse,
 };
@@ -16,7 +16,7 @@ pub use alloy_eips::{
     BlockNumberOrTag, ForkBlock, RpcBlockHash,
 };
 
-/// Block representation
+/// Block representation for RPC.
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
@@ -51,6 +51,174 @@ impl<T, H: Default> Default for Block<T, H> {
             transactions: Default::default(),
             withdrawals: Default::default(),
         }
+    }
+}
+
+impl<T, H> Block<T, H> {
+    /// Creates a new empty block (without transactions).
+    pub const fn empty(header: H) -> Self {
+        Self::new(header, BlockTransactions::Full(vec![]))
+    }
+
+    /// Creates a new [`Block`] with the given header and transactions.
+    ///
+    /// Note: This does not set the withdrawals for the block.
+    ///
+    /// ```
+    /// use alloy_eips::eip4895::Withdrawals;
+    /// use alloy_network_primitives::BlockTransactions;
+    /// use alloy_rpc_types_eth::{Block, Header, Transaction};
+    /// let block = Block::new(
+    ///     Header::new(alloy_consensus::Header::default()),
+    ///     BlockTransactions::<Transaction>::Full(vec![]),
+    /// )
+    /// .with_withdrawals(Some(Withdrawals::default()));
+    /// ```
+    pub const fn new(header: H, transactions: BlockTransactions<T>) -> Self {
+        Self { header, uncles: vec![], transactions, withdrawals: None }
+    }
+
+    /// Apply a function to the block, returning the modified block.
+    pub fn apply<F>(self, f: F) -> Self
+    where
+        F: FnOnce(Self) -> Self,
+    {
+        f(self)
+    }
+
+    /// Sets the transactions for the block.
+    pub fn with_transactions(mut self, transactions: BlockTransactions<T>) -> Self {
+        self.transactions = transactions;
+        self
+    }
+
+    /// Sets the withdrawals for the block.
+    pub fn with_withdrawals(mut self, withdrawals: Option<Withdrawals>) -> Self {
+        self.withdrawals = withdrawals;
+        self
+    }
+
+    /// Sets the uncles for the block.
+    pub fn with_uncles(mut self, uncles: Vec<B256>) -> Self {
+        self.uncles = uncles;
+        self
+    }
+
+    /// Tries to convert inner transactions into a vector of full transactions
+    ///
+    /// Returns an error if the block contains only transaction hashes or if it is an uncle block.
+    pub fn try_into_transactions(self) -> Result<Vec<T>, ValueError<BlockTransactions<T>>> {
+        self.transactions.try_into_transactions()
+    }
+
+    /// Consumes the type and returns the transactions as a vector.
+    ///
+    /// Note: if this is an uncle or hashes, this will return an empty vector.
+    pub fn into_transactions_vec(self) -> Vec<T> {
+        self.transactions.into_transactions_vec()
+    }
+
+    /// Converts this block into a [`BlockBody`].
+    ///
+    /// Returns an error if the transactions are not full or if the block has uncles.
+    pub fn try_into_block_body(self) -> Result<BlockBody<T, H>, ValueError<Self>> {
+        if !self.uncles.is_empty() {
+            return Err(ValueError::new_static(self, "uncles not empty"));
+        }
+        if !self.transactions.is_full() {
+            return Err(ValueError::new_static(self, "transactions not full"));
+        }
+
+        Ok(self.into_block_body_unchecked())
+    }
+
+    /// Converts this block into a [`BlockBody`]
+    ///
+    /// Caution: The body will have empty transactions unless the block's transactions are
+    /// [`BlockTransactions::Full`]. This will disregard ommers/uncles and always return an empty
+    /// ommers vec.
+    pub fn into_block_body_unchecked(self) -> BlockBody<T, H> {
+        BlockBody {
+            transactions: self.transactions.into_transactions_vec(),
+            ommers: Default::default(),
+            withdrawals: self.withdrawals,
+        }
+    }
+
+    /// Converts the block's header type by applying a function to it.
+    pub fn map_header<U>(self, f: impl FnOnce(H) -> U) -> Block<T, U> {
+        Block {
+            header: f(self.header),
+            uncles: self.uncles,
+            transactions: self.transactions,
+            withdrawals: self.withdrawals,
+        }
+    }
+
+    /// Converts the block's header type by applying a fallible function to it.
+    pub fn try_map_header<U, E>(self, f: impl FnOnce(H) -> Result<U, E>) -> Result<Block<T, U>, E> {
+        Ok(Block {
+            header: f(self.header)?,
+            uncles: self.uncles,
+            transactions: self.transactions,
+            withdrawals: self.withdrawals,
+        })
+    }
+
+    /// Converts the block's transaction type to the given alternative that is `From<T>`
+    pub fn convert_transactions<U>(self) -> Block<U, H>
+    where
+        U: From<T>,
+    {
+        self.map_transactions(U::from)
+    }
+
+    /// Converts the block's transaction to the given alternative that is `TryFrom<T>`
+    ///
+    /// Returns the block with the new transaction type if all conversions were successful.
+    pub fn try_convert_transactions<U>(self) -> Result<Block<U, H>, U::Error>
+    where
+        U: TryFrom<T>,
+    {
+        self.try_map_transactions(U::try_from)
+    }
+
+    /// Converts the block's transaction type by applying a function to each transaction.
+    ///
+    /// Returns the block with the new transaction type.
+    pub fn map_transactions<U>(self, f: impl FnMut(T) -> U) -> Block<U, H> {
+        Block {
+            header: self.header,
+            uncles: self.uncles,
+            transactions: self.transactions.map(f),
+            withdrawals: self.withdrawals,
+        }
+    }
+
+    /// Converts the block's transaction type by applying a fallible function to each transaction.
+    ///
+    /// Returns the block with the new transaction type if all transactions were mapped
+    /// successfully.
+    pub fn try_map_transactions<U, E>(
+        self,
+        f: impl FnMut(T) -> Result<U, E>,
+    ) -> Result<Block<U, H>, E> {
+        Ok(Block {
+            header: self.header,
+            uncles: self.uncles,
+            transactions: self.transactions.try_map(f)?,
+            withdrawals: self.withdrawals,
+        })
+    }
+
+    /// Calculate the transaction root for the full transactions in this block type.
+    ///
+    /// Returns `None` if the `transactions` is not the [`BlockTransactions::Full`] variant.
+    pub fn calculate_transactions_root(&self) -> Option<B256>
+    where
+        T: Encodable2718,
+    {
+        self.transactions.calculate_transactions_root()
     }
 }
 
@@ -97,9 +265,27 @@ impl<T> Block<T> {
             withdrawals,
         }
     }
+
+    /// Consumes the block and returns the [`alloy_consensus::Block`].
+    ///
+    /// This has two caveats:
+    ///  - The returned block will always have empty uncles.
+    ///  - If the block's transaction is not [`BlockTransactions::Full`], the returned block will
+    ///    have an empty transaction vec.
+    pub fn into_consensus(self) -> alloy_consensus::Block<T> {
+        let Self { header, transactions, withdrawals, .. } = self;
+        alloy_consensus::BlockBody {
+            transactions: transactions.into_transactions_vec(),
+            ommers: vec![],
+            withdrawals,
+        }
+        .into_block(header.into_consensus())
+    }
 }
 
 /// RPC representation of block header, wrapping a consensus header.
+///
+/// This wraps the consensus header and adds additional fields for RPC.
 #[cfg_attr(any(test, feature = "arbitrary"), derive(arbitrary::Arbitrary))]
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -121,6 +307,34 @@ pub struct Header<H = alloy_consensus::Header> {
 }
 
 impl<H> Header<H> {
+    /// Create a new [`Header`] from a consensus header.
+    ///
+    /// Note: This will compute the hash of the header.
+    pub fn new(inner: H) -> Self
+    where
+        H: Sealable,
+    {
+        Self::from_sealed(Sealed::new(inner))
+    }
+
+    /// Create a new [`Header`] from a sealed consensus header.
+    ///
+    /// Note: This does not set the total difficulty or size of the block.
+    pub fn from_sealed(header: Sealed<H>) -> Self {
+        let (inner, hash) = header.into_parts();
+        Self { hash, inner, total_difficulty: None, size: None }
+    }
+
+    /// Consumes the type and returns the [`Sealed`] header.
+    pub fn into_sealed(self) -> Sealed<H> {
+        Sealed::new_unchecked(self.inner, self.hash)
+    }
+
+    /// Consumes the type and returns the wrapped consensus header.
+    pub fn into_consensus(self) -> H {
+        self.inner
+    }
+
     /// Create a new [`Header`] from a sealed consensus header and additional fields.
     pub fn from_consensus(
         header: Sealed<H>,
@@ -129,6 +343,34 @@ impl<H> Header<H> {
     ) -> Self {
         let (inner, hash) = header.into_parts();
         Self { hash, inner, total_difficulty, size }
+    }
+
+    /// Set the total difficulty of the block.
+    pub const fn with_total_difficulty(mut self, total_difficulty: Option<U256>) -> Self {
+        self.total_difficulty = total_difficulty;
+        self
+    }
+
+    /// Set the size of the block.
+    pub const fn with_size(mut self, size: Option<U256>) -> Self {
+        self.size = size;
+        self
+    }
+
+    /// Applies the given closure to the inner header.
+    #[allow(clippy::use_self)]
+    pub fn map<H1>(self, f: impl FnOnce(H) -> H1) -> Header<H1> {
+        let Header { hash, inner, total_difficulty, size } = self;
+
+        Header { hash, inner: f(inner), total_difficulty, size }
+    }
+
+    /// Applies the given fallible closure to the inner header.
+    #[allow(clippy::use_self)]
+    pub fn try_map<H1, E>(self, f: impl FnOnce(H) -> Result<H1, E>) -> Result<Header<H1>, E> {
+        let Header { hash, inner, total_difficulty, size } = self;
+
+        Ok(Header { hash, inner: f(inner)?, total_difficulty, size })
     }
 }
 
@@ -165,16 +407,16 @@ impl<H: BlockHeader> Header<H> {
     /// Returns `None` if `excess_blob_gas` is None.
     ///
     /// See also [Self::next_block_excess_blob_gas]
-    pub fn next_block_blob_fee(&self) -> Option<u128> {
-        self.inner.next_block_blob_fee()
+    pub fn next_block_blob_fee(&self, blob_params: BlobParams) -> Option<u128> {
+        self.inner.next_block_blob_fee(blob_params)
     }
 
     /// Calculate excess blob gas for the next block according to the EIP-4844
     /// spec.
     ///
     /// Returns a `None` if no excess blob gas is set, no EIP-4844 support
-    pub fn next_block_excess_blob_gas(&self) -> Option<u64> {
-        self.inner.next_block_excess_blob_gas()
+    pub fn next_block_excess_blob_gas(&self, blob_params: BlobParams) -> Option<u64> {
+        self.inner.next_block_excess_blob_gas(blob_params)
     }
 }
 
@@ -231,10 +473,6 @@ impl<H: BlockHeader> BlockHeader for Header<H> {
         self.inner.timestamp()
     }
 
-    fn extra_data(&self) -> &Bytes {
-        self.inner.extra_data()
-    }
-
     fn mix_hash(&self) -> Option<B256> {
         self.inner.mix_hash()
     }
@@ -263,8 +501,8 @@ impl<H: BlockHeader> BlockHeader for Header<H> {
         self.inner.requests_hash()
     }
 
-    fn target_blobs_per_block(&self) -> Option<u64> {
-        self.inner.target_blobs_per_block()
+    fn extra_data(&self) -> &Bytes {
+        self.inner.extra_data()
     }
 }
 
@@ -274,25 +512,27 @@ impl<H: BlockHeader> HeaderResponse for Header<H> {
     }
 }
 
-/// Error that can occur when converting other types to blocks
-#[derive(Clone, Copy, Debug, derive_more::Display)]
-pub enum BlockError {
-    /// A transaction failed sender recovery
-    #[display("transaction failed sender recovery")]
-    InvalidSignature,
-    /// A raw block failed to decode
-    #[display("failed to decode raw block {_0}")]
-    RlpDecodeRawBlock(alloy_rlp::Error),
+impl From<Header> for alloy_consensus::Header {
+    fn from(header: Header) -> Self {
+        header.into_consensus()
+    }
 }
 
-#[cfg(feature = "std")]
-impl std::error::Error for BlockError {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        match self {
-            Self::RlpDecodeRawBlock(err) => Some(err),
-            _ => None,
-        }
+impl<H> From<Header<H>> for Sealed<H> {
+    fn from(value: Header<H>) -> Self {
+        value.into_sealed()
     }
+}
+
+/// Error that can occur when converting other types to blocks
+#[derive(Clone, Copy, Debug, thiserror::Error)]
+pub enum BlockError {
+    /// A transaction failed sender recovery
+    #[error("transaction failed sender recovery")]
+    InvalidSignature,
+    /// A raw block failed to decode
+    #[error("failed to decode raw block {0}")]
+    RlpDecodeRawBlock(alloy_rlp::Error),
 }
 
 #[cfg(feature = "serde")]
@@ -395,7 +635,7 @@ impl<T: TransactionResponse, H> BlockResponse for Block<T, H> {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct BadBlock {
-    /// Underyling block object.
+    /// Underlying block object.
     block: Block,
     /// Hash of the block.
     hash: BlockHash,
@@ -405,12 +645,11 @@ pub struct BadBlock {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use alloy_primitives::{hex, keccak256, Bloom, B64};
     use arbitrary::Arbitrary;
     use rand::Rng;
     use similar_asserts::assert_eq;
-
-    use super::*;
 
     #[test]
     fn arbitrary_header() {
@@ -460,7 +699,6 @@ mod tests {
                     excess_blob_gas: None,
                     parent_beacon_block_root: None,
                     requests_hash: None,
-                    target_blobs_per_block: None,
                 },
                 total_difficulty: Some(U256::from(100000)),
                 size: None,
@@ -470,12 +708,12 @@ mod tests {
             withdrawals: Some(Default::default()),
         };
         let serialized = serde_json::to_string(&block).unwrap();
-        assert_eq!(
+        similar_asserts::assert_eq!(
             serialized,
             r#"{"hash":"0x0000000000000000000000000000000000000000000000000000000000000001","parentHash":"0x0000000000000000000000000000000000000000000000000000000000000002","sha3Uncles":"0x0000000000000000000000000000000000000000000000000000000000000003","miner":"0x0000000000000000000000000000000000000004","stateRoot":"0x0000000000000000000000000000000000000000000000000000000000000005","transactionsRoot":"0x0000000000000000000000000000000000000000000000000000000000000006","receiptsRoot":"0x0000000000000000000000000000000000000000000000000000000000000007","logsBloom":"0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000","difficulty":"0xd","number":"0x9","gasLimit":"0xb","gasUsed":"0xa","timestamp":"0xc","extraData":"0x010203","mixHash":"0x000000000000000000000000000000000000000000000000000000000000000e","nonce":"0x000000000000000f","baseFeePerGas":"0x14","withdrawalsRoot":"0x0000000000000000000000000000000000000000000000000000000000000008","totalDifficulty":"0x186a0","uncles":["0x0000000000000000000000000000000000000000000000000000000000000011"],"transactions":["0x0000000000000000000000000000000000000000000000000000000000000012"],"withdrawals":[]}"#
         );
         let deserialized: Block = serde_json::from_str(&serialized).unwrap();
-        assert_eq!(block, deserialized);
+        similar_asserts::assert_eq!(block, deserialized);
     }
 
     #[test]
@@ -508,7 +746,6 @@ mod tests {
                     excess_blob_gas: None,
                     parent_beacon_block_root: None,
                     requests_hash: None,
-                    target_blobs_per_block: None,
                 },
                 size: None,
                 total_difficulty: Some(U256::from(100000)),
@@ -554,7 +791,6 @@ mod tests {
                     excess_blob_gas: None,
                     parent_beacon_block_root: None,
                     requests_hash: None,
-                    target_blobs_per_block: None,
                 },
                 total_difficulty: Some(U256::from(100000)),
                 size: None,
@@ -826,7 +1062,6 @@ mod tests {
                 excess_blob_gas: None,
                 parent_beacon_block_root: None,
                 requests_hash: None,
-                target_blobs_per_block: None,
             },
             size: None,
             total_difficulty: None,
@@ -873,7 +1108,6 @@ mod tests {
                 excess_blob_gas: None,
                 parent_beacon_block_root: None,
                 requests_hash: None,
-                target_blobs_per_block: None,
             },
             total_difficulty: None,
             size: Some(U256::from(505)),
@@ -932,7 +1166,6 @@ mod tests {
                     excess_blob_gas: None,
                     parent_beacon_block_root: None,
                     requests_hash: None,
-                    target_blobs_per_block: None,
                 },
                 total_difficulty: Some(U256::from(100000)),
                 size: Some(U256::from(19)),
@@ -953,6 +1186,13 @@ mod tests {
         );
 
         let deserialized: BadBlock = serde_json::from_str(&serialized).unwrap();
-        assert_eq!(bad_block, deserialized);
+        similar_asserts::assert_eq!(bad_block, deserialized);
+    }
+
+    // <https://github.com/succinctlabs/kona/issues/31>
+    #[test]
+    fn deserde_tenderly_block() {
+        let s = include_str!("../testdata/tenderly.sepolia.json");
+        let _block: Block = serde_json::from_str(s).unwrap();
     }
 }

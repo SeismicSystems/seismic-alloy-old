@@ -16,6 +16,7 @@ use alloc::{
     vec,
     vec::Vec,
 };
+use alloy_consensus::transaction::Recovered;
 
 /// Represents _all_ transaction requests to/from RPC.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
@@ -195,6 +196,12 @@ impl TransactionRequest {
     }
 
     /// Initializes the [`TransactionRequest`] with the provided transaction and sender.
+    pub fn from_recovered_transaction<T: TransactionTrait>(tx: Recovered<T>) -> Self {
+        let (tx, from) = tx.into_parts();
+        Self::from_transaction(tx).from(from)
+    }
+
+    /// Initializes the [`TransactionRequest`] with the provided transaction and sender.
     pub fn from_transaction_with_sender<T: TransactionTrait>(tx: T, from: Address) -> Self {
         Self::from_transaction(tx).from(from)
     }
@@ -227,6 +234,12 @@ impl TransactionRequest {
     /// Sets the maximum priority fee per gas for the transaction.
     pub const fn max_priority_fee_per_gas(mut self, max_priority_fee_per_gas: u128) -> Self {
         self.max_priority_fee_per_gas = Some(max_priority_fee_per_gas);
+        self
+    }
+
+    /// Sets the maximum fee per blob gas for the transaction.
+    pub const fn max_fee_per_blob_gas(mut self, max_fee_per_blob_gas: u128) -> Self {
+        self.max_fee_per_blob_gas = Some(max_fee_per_blob_gas);
         self
     }
 
@@ -730,7 +743,7 @@ impl TransactionRequest {
     /// Build a [`TypedTransaction`]
     ///
     /// When `Ok(...)` is returned, the `TypedTransaction` is guaranteed to be _complete_. Which
-    /// is to say, that it is signable, and the signed versino can be sent to the network.
+    /// is to say, that it is signable, and the signed version can be sent to the network.
     pub fn build_typed_tx(self) -> Result<TypedTransaction, Self> {
         let Some(tx_type) = self.buildable_type() else {
             return Err(self);
@@ -1088,7 +1101,23 @@ impl From<TxEnvelope> for TransactionRequest {
                     tx.strip_signature().into()
                 }
             }
-            _ => Default::default(),
+            TxEnvelope::Seismic(tx) => {
+                #[cfg(feature = "k256")]
+                {
+                    let from = tx.recover_signer().ok();
+                    let tx: Self = tx.strip_signature().into();
+                    if let Some(from) = from {
+                        tx.from(from)
+                    } else {
+                        tx
+                    }
+                }
+
+                #[cfg(not(feature = "k256"))]
+                {
+                    tx.strip_signature().into()
+                }
+            }
         }
     }
 }
@@ -1195,14 +1224,11 @@ impl From<Option<Bytes>> for TransactionInput {
 }
 
 /// Error thrown when both `data` and `input` fields are set and not equal.
-#[derive(Debug, Default, derive_more::Display)]
-#[display("both \"data\" and \"input\" are set and not equal. Please use \"input\" to pass transaction call data")]
+#[derive(Debug, Default, thiserror::Error)]
+#[error("both \"data\" and \"input\" are set and not equal. Please use \"input\" to pass transaction call data")]
 #[doc(alias = "TxInputError")]
 #[non_exhaustive]
 pub struct TransactionInputError;
-
-#[cfg(feature = "std")]
-impl std::error::Error for TransactionInputError {}
 
 /// Error thrown when a transaction request cannot be built into a transaction.
 #[derive(Debug)]
@@ -1216,7 +1242,7 @@ pub struct BuildTransactionErr<T = TransactionRequest> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use alloy_primitives::{aliases::U96, b256, hex};
+    use alloy_primitives::b256;
     use alloy_serde::WithOtherFields;
     use assert_matches::assert_matches;
     use similar_asserts::assert_eq;

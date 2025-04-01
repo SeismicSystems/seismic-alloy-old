@@ -4,6 +4,7 @@ use crate::{
     CancunPayloadFields, MaybeCancunPayloadFields, MaybePraguePayloadFields, PraguePayloadFields,
 };
 use alloc::vec::Vec;
+use alloy_consensus::{Block, BlockHeader, Transaction};
 use alloy_eips::eip7685::Requests;
 use alloy_primitives::B256;
 
@@ -21,6 +22,33 @@ pub struct ExecutionPayloadSidecar {
 }
 
 impl ExecutionPayloadSidecar {
+    /// Extracts the [`ExecutionPayloadSidecar`] from the given [`alloy_consensus::Block`].
+    ///
+    /// Returns [`ExecutionPayloadSidecar::none`] if the block does not contain any sidecar fields
+    /// (pre-cancun): `requests_hash`, `parent_beacon_block_root`, `blob_versioned_hashes`.
+    ///
+    /// Note: This returns [`RequestOrHash::Hash`](alloy_eips::eip7685::RequestsOrHash::Hash) for
+    /// the EIP-7685 requests.
+    pub fn from_block<T, H>(block: &Block<T, H>) -> Self
+    where
+        T: Transaction,
+        H: BlockHeader,
+    {
+        let cancun =
+            block.parent_beacon_block_root().map(|parent_beacon_block_root| CancunPayloadFields {
+                parent_beacon_block_root,
+                versioned_hashes: block.body.blob_versioned_hashes_iter().copied().collect(),
+            });
+
+        let prague = block.requests_hash().map(PraguePayloadFields::new);
+
+        match (cancun, prague) {
+            (Some(cancun), Some(prague)) => Self::v4(cancun, prague),
+            (Some(cancun), None) => Self::v3(cancun),
+            _ => Self::none(),
+        }
+    }
+
     /// Returns a new empty instance (pre-cancun, v1, v2)
     pub const fn none() -> Self {
         Self { cancun: MaybeCancunPayloadFields::none(), prague: MaybePraguePayloadFields::none() }
@@ -41,9 +69,19 @@ impl ExecutionPayloadSidecar {
         self.cancun.as_ref()
     }
 
+    /// Consumes the type and returns the [`CancunPayloadFields`]
+    pub fn into_cancun(self) -> Option<CancunPayloadFields> {
+        self.cancun.into_inner()
+    }
+
     /// Returns a reference to the [`PraguePayloadFields`].
     pub const fn prague(&self) -> Option<&PraguePayloadFields> {
         self.prague.as_ref()
+    }
+
+    /// Consumes the type and returns the [`PraguePayloadFields`].
+    pub fn into_prague(self) -> Option<PraguePayloadFields> {
+        self.prague.into_inner()
     }
 
     /// Returns the parent beacon block root, if any.
@@ -71,10 +109,5 @@ impl ExecutionPayloadSidecar {
     /// - If it contains a precomputed hash (used for testing), it returns that hash directly.
     pub fn requests_hash(&self) -> Option<B256> {
         self.prague.requests_hash()
-    }
-
-    /// Returns the target blobs per block
-    pub fn target_blobs_per_block(&self) -> Option<u64> {
-        self.prague.target_blobs_per_block()
     }
 }

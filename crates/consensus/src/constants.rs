@@ -1,6 +1,10 @@
 //! Ethereum protocol-related constants
 use alloy_primitives::{b256, B256};
 
+pub use alloy_eips::eip2718::{
+    EIP1559_TX_TYPE_ID, EIP2930_TX_TYPE_ID, EIP4844_TX_TYPE_ID, EIP7702_TX_TYPE_ID,
+    LEGACY_TX_TYPE_ID, SEISMIC_TX_TYPE_ID,
+};
 pub use alloy_trie::{EMPTY_ROOT_HASH, KECCAK_EMPTY};
 
 /// The first four bytes of the call data for a function call specifies the function to be called.
@@ -37,6 +41,10 @@ pub const SEPOLIA_GENESIS_HASH: B256 =
 pub const HOLESKY_GENESIS_HASH: B256 =
     b256!("b5f7f912443c940f21fd611f12828d75b534364ed9e95ca4e307729a4661bde4");
 
+/// Hoodi genesis hash.
+pub const HOODI_GENESIS_HASH: B256 =
+    b256!("bbe312868b376a3001692a646dd2d7d1e4406380dfd86b98aa8a34d1557c971b");
+
 /// Testnet genesis hash.
 pub const DEV_GENESIS_HASH: B256 =
     b256!("2f980576711e3617a5e4d83dd539548ec0f7792007d505a3d2e9674833af2d7c");
@@ -61,22 +69,3 @@ pub const EMPTY_TRANSACTIONS: B256 = EMPTY_ROOT_HASH;
 
 /// Withdrawals root of empty withdrawals set.
 pub const EMPTY_WITHDRAWALS: B256 = EMPTY_ROOT_HASH;
-
-/// Identifier for legacy transaction, however a legacy tx is technically not
-/// typed.
-pub const LEGACY_TX_TYPE_ID: u8 = 0;
-
-/// Identifier for an EIP2930 transaction.
-pub const EIP2930_TX_TYPE_ID: u8 = 1;
-
-/// Identifier for an EIP1559 transaction.
-pub const EIP1559_TX_TYPE_ID: u8 = 2;
-
-/// Identifier for an EIP4844 transaction.
-pub const EIP4844_TX_TYPE_ID: u8 = 3;
-
-/// Identifier for an EIP7702 transaction.
-pub const EIP7702_TX_TYPE_ID: u8 = 4;
-
-/// Identifier for an seismic transaction.
-pub const SEISMIC_TX_TYPE_ID: u8 = 74;

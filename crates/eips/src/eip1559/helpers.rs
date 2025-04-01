@@ -1,4 +1,19 @@
-use crate::eip1559::BaseFeeParams;
+use crate::eip1559::{constants::GAS_LIMIT_BOUND_DIVISOR, BaseFeeParams};
+
+/// Return type of EIP1155 gas fee estimator.
+///
+/// Contains EIP-1559 fields
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+pub struct Eip1559Estimation {
+    /// The base fee per gas.
+    #[cfg_attr(feature = "serde", serde(with = "alloy_serde::quantity"))]
+    pub max_fee_per_gas: u128,
+    /// The max priority fee per gas.
+    #[cfg_attr(feature = "serde", serde(with = "alloy_serde::quantity"))]
+    pub max_priority_fee_per_gas: u128,
+}
 
 /// Calculate the base fee for the next block based on the EIP-1559 specification.
 ///
@@ -59,6 +74,15 @@ pub fn calc_next_block_base_fee(
             )
         }
     }
+}
+
+/// Calculate the gas limit for the next block based on parent and desired gas limits.
+/// Ref: <https://github.com/ethereum/go-ethereum/blob/88cbfab332c96edfbe99d161d9df6a40721bd786/core/block_validator.go#L166>
+pub fn calculate_block_gas_limit(parent_gas_limit: u64, desired_gas_limit: u64) -> u64 {
+    let delta = (parent_gas_limit / GAS_LIMIT_BOUND_DIVISOR).saturating_sub(1);
+    let min_gas_limit = parent_gas_limit - delta;
+    let max_gas_limit = parent_gas_limit + delta;
+    desired_gas_limit.clamp(min_gas_limit, max_gas_limit)
 }
 
 #[cfg(test)]

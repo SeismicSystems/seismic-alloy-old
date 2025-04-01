@@ -359,6 +359,8 @@ pub struct CreateAction {
     /// The value with which the new account is endowed.
     pub value: U256,
     /// The contract creation method.
+    // Note: this deserializes default because it's not yet supported by all clients
+    #[serde(default)]
     pub creation_method: CreationMethod,
 }
 
@@ -520,12 +522,22 @@ pub struct LocalizedTransactionTrace {
 }
 
 impl LocalizedTransactionTrace {
+    /// Sets the gas used of this trace.
+    ///
+    /// This is intended to manually set the root trace's gas used to the actual gas used by the
+    /// transaction, e.g. for geth's [`FlatCallFrame`](crate::geth::call::FlatCallFrame)
+    pub fn set_gas_used(&mut self, gas_used: u64) {
+        if let Some(res) = self.trace.result.as_mut() {
+            res.set_gas_used(gas_used);
+        }
+    }
     /// Shield the inputs of transactions.
     pub fn shield_inputs(mut self) -> Self {
         self.trace.action = self.trace.action.shield_inputs();
         self
     }
 }
+
 // Implement Serialize manually to ensure consistent ordering of fields to match other client's
 // format
 impl Serialize for LocalizedTransactionTrace {

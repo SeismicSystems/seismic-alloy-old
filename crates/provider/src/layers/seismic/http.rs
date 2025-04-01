@@ -21,12 +21,8 @@ pub type SeismicSignedProviderInner = SeismicProvider<
             >,
             WalletFiller<EthereumWallet>,
         >,
-        RootProvider<alloy_transport_http::Http<alloy_transport_http::Client>, Ethereum>,
-        alloy_transport_http::Http<alloy_transport_http::Client>,
-        Ethereum,
+        RootProvider<Ethereum>,
     >,
-    alloy_transport_http::Http<alloy_transport_http::Client>,
-    Ethereum,
 >;
 
 /// Seismic signed provider
@@ -52,7 +48,7 @@ impl SeismicSignedProvider {
         );
 
         // Build and return the provider
-        let inner = ProviderBuilder::new()
+        let inner = ProviderBuilder::<Identity, Identity, Ethereum>::default()
             .network::<Ethereum>()
             .layer(SeismicLayer {})
             .layer(tx_filler_layer)
@@ -72,12 +68,8 @@ impl Deref for SeismicSignedProvider {
 pub type SeismicUnsignedProviderInner = SeismicProvider<
     FillProvider<
         JoinFill<<Ethereum as RecommendedFillers>::RecommendedFillers, Identity>,
-        RootProvider<alloy_transport_http::Http<alloy_transport_http::Client>, Ethereum>,
-        alloy_transport_http::Http<alloy_transport_http::Client>,
-        Ethereum,
+        RootProvider<Ethereum>,
     >,
-    alloy_transport_http::Http<alloy_transport_http::Client>,
-    Ethereum,
 >;
 
 /// Seismic unsigned provider
@@ -90,7 +82,7 @@ impl SeismicUnsignedProvider {
         // Create wallet layer with recommended fillers
         let tx_filler_layer = JoinFill::new(Ethereum::recommended_fillers(), Identity);
 
-        let inner = ProviderBuilder::new()
+        let inner = ProviderBuilder::<Identity, Identity, Ethereum>::default()
             .network::<Ethereum>()
             .layer(SeismicLayer {})
             .layer(tx_filler_layer)

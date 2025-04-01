@@ -5,7 +5,7 @@ use crate::{
 };
 use alloy_network::{Network, TransactionBuilder};
 use alloy_primitives::Address;
-use alloy_transport::{Transport, TransportResult};
+use alloy_transport::TransportResult;
 use async_trait::async_trait;
 use dashmap::DashMap;
 use futures::lock::Mutex;
@@ -16,11 +16,10 @@ use std::sync::Arc;
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 pub trait NonceManager: Clone + Send + Sync + std::fmt::Debug {
     /// Get the next nonce for the given account.
-    async fn get_next_nonce<P, T, N>(&self, provider: &P, address: Address) -> TransportResult<u64>
+    async fn get_next_nonce<P, N>(&self, provider: &P, address: Address) -> TransportResult<u64>
     where
-        P: Provider<T, N>,
-        N: Network,
-        T: Transport + Clone;
+        P: Provider<N>,
+        N: Network;
 }
 
 /// This [`NonceManager`] implementation will fetch the transaction count for any new account it
@@ -36,11 +35,10 @@ pub struct SimpleNonceManager;
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl NonceManager for SimpleNonceManager {
-    async fn get_next_nonce<P, T, N>(&self, provider: &P, address: Address) -> TransportResult<u64>
+    async fn get_next_nonce<P, N>(&self, provider: &P, address: Address) -> TransportResult<u64>
     where
-        P: Provider<T, N>,
+        P: Provider<N>,
         N: Network,
-        T: Transport + Clone,
     {
         provider.get_transaction_count(address).latest().await
     }
@@ -62,11 +60,10 @@ pub struct CachedNonceManager {
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl NonceManager for CachedNonceManager {
-    async fn get_next_nonce<P, T, N>(&self, provider: &P, address: Address) -> TransportResult<u64>
+    async fn get_next_nonce<P, N>(&self, provider: &P, address: Address) -> TransportResult<u64>
     where
-        P: Provider<T, N>,
+        P: Provider<N>,
         N: Network,
-        T: Transport + Clone,
     {
         // Use `u64::MAX` as a sentinel value to indicate that the nonce has not been fetched yet.
         const NONE: u64 = u64::MAX;
@@ -103,13 +100,15 @@ impl NonceManager for CachedNonceManager {
 /// # Example
 ///
 /// ```
-/// # use alloy_network::{NetworkWallet, EthereumWallet, Ethereum};
+/// # use alloy_network::{Ethereum};
 /// # use alloy_rpc_types_eth::TransactionRequest;
 /// # use alloy_provider::{ProviderBuilder, RootProvider, Provider};
-/// # async fn test<W: NetworkWallet<Ethereum> + Clone>(url: url::Url, wallet: W) -> Result<(), Box<dyn std::error::Error>> {
-/// let provider = ProviderBuilder::new()
+/// # use alloy_signer_local::PrivateKeySigner;
+/// # async fn test(url: url::Url) -> Result<(), Box<dyn std::error::Error>> {
+/// let pk: PrivateKeySigner = "0x...".parse()?;
+/// let provider = ProviderBuilder::<_, _, Ethereum>::default()
 ///     .with_simple_nonce_management()
-///     .wallet(wallet)
+///     .wallet(pk)
 ///     .on_http(url);
 ///
 /// provider.send_transaction(TransactionRequest::default()).await;
@@ -143,14 +142,13 @@ impl<M: NonceManager, N: Network> TxFiller<N> for NonceFiller<M> {
 
     fn fill_sync(&self, _tx: &mut SendableTx<N>) {}
 
-    async fn prepare<P, T>(
+    async fn prepare<P>(
         &self,
         provider: &P,
         tx: &N::TransactionRequest,
     ) -> TransportResult<Self::Fillable>
     where
-        P: Provider<T, N>,
-        T: Transport + Clone,
+        P: Provider<N>,
     {
         let from = tx.from().expect("checked by 'ready()'");
         self.nonce_manager.get_next_nonce(provider, from).await
@@ -176,15 +174,14 @@ mod tests {
     use alloy_primitives::{address, U256};
     use alloy_rpc_types_eth::TransactionRequest;
 
-    async fn check_nonces<P, T, N, M>(
+    async fn check_nonces<P, N, M>(
         filler: &NonceFiller<M>,
         provider: &P,
         address: Address,
         start: u64,
     ) where
-        P: Provider<T, N>,
+        P: Provider<N>,
         N: Network,
-        T: Transport + Clone,
         M: NonceManager,
     {
         for i in start..start + 5 {
@@ -204,7 +201,7 @@ mod tests {
         {
             use crate::ext::AnvilApi;
             filler.nonce_manager.nonces.clear();
-            provider.anvil_set_nonce(address, U256::from(69)).await.unwrap();
+            provider.anvil_set_nonce(address, 69).await.unwrap();
             check_nonces(&filler, &provider, address, 69).await;
         }
     }
@@ -237,7 +234,10 @@ mod tests {
 
     #[tokio::test]
     async fn no_nonce_if_sender_unset() {
-        let provider = ProviderBuilder::new().with_cached_nonce_management().on_anvil();
+        let provider = ProviderBuilder::new()
+            .disable_recommended_fillers()
+            .with_cached_nonce_management()
+            .on_anvil();
 
         let tx = TransactionRequest {
             value: Some(U256::from(100)),
@@ -253,7 +253,10 @@ mod tests {
 
     #[tokio::test]
     async fn increments_nonce() {
-        let provider = ProviderBuilder::new().with_cached_nonce_management().on_anvil_with_wallet();
+        let provider = ProviderBuilder::new()
+            .disable_recommended_fillers()
+            .with_cached_nonce_management()
+            .on_anvil_with_wallet();
 
         let from = provider.default_signer_address();
         let tx = TransactionRequest {
@@ -282,5 +285,19 @@ mod tests {
             .expect("fail to fetch tx")
             .expect("tx didn't finalize");
         assert_eq!(mined_tx.nonce(), 1);
+    }
+
+    #[tokio::test]
+    async fn cloned_managers() {
+        let cnm1 = CachedNonceManager::default();
+        let cnm2 = cnm1.clone();
+
+        let provider = ProviderBuilder::new().on_anvil();
+        let address = Address::ZERO;
+
+        assert_eq!(cnm1.get_next_nonce(&provider, address).await.unwrap(), 0);
+        assert_eq!(cnm2.get_next_nonce(&provider, address).await.unwrap(), 1);
+        assert_eq!(cnm1.get_next_nonce(&provider, address).await.unwrap(), 2);
+        assert_eq!(cnm2.get_next_nonce(&provider, address).await.unwrap(), 3);
     }
 }

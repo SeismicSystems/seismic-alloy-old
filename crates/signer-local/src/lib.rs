@@ -7,7 +7,7 @@
 #![cfg_attr(docsrs, feature(doc_cfg, doc_auto_cfg))]
 
 use alloy_consensus::SignableTransaction;
-use alloy_network::{TxSigner, TxSignerSync};
+use alloy_network::{impl_into_wallet, TxSigner, TxSignerSync};
 use alloy_primitives::{Address, ChainId, PrimitiveSignature as Signature, B256};
 use alloy_signer::{sign_transaction_with_chain_id, Result, Signer, SignerSync};
 use async_trait::async_trait;
@@ -209,6 +209,8 @@ where
     }
 }
 
+impl_into_wallet!(@[C: PrehashSigner<(ecdsa::Signature, RecoveryId)> + Send + Sync + 'static] LocalSigner<C>);
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -288,5 +290,16 @@ mod test {
         let error = sign_tx_test(&mut tx, Some(1)).await.unwrap_err();
         let expected_error = alloy_signer::Error::TransactionChainIdMismatch { signer: 1, tx: 2 };
         assert_eq!(error.to_string(), expected_error.to_string());
+    }
+
+    // <https://github.com/alloy-rs/core/issues/705>
+    #[test]
+    fn test_parity() {
+        let signer = PrivateKeySigner::random();
+        let message = b"hello";
+        let signature = signer.sign_message_sync(message).unwrap();
+        let value = signature.as_bytes().to_vec();
+        let recovered_signature: Signature = value.as_slice().try_into().unwrap();
+        assert_eq!(signature, recovered_signature);
     }
 }

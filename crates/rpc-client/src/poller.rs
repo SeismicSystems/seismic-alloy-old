@@ -1,6 +1,7 @@
 use crate::WeakClient;
-use alloy_json_rpc::{RpcError, RpcParam, RpcReturn};
-use alloy_transport::{utils::Spawnable, Transport};
+use alloy_json_rpc::{RpcError, RpcRecv, RpcSend};
+use alloy_transport::utils::Spawnable;
+use async_stream::stream;
 use futures::{Stream, StreamExt};
 use serde::Serialize;
 use serde_json::value::RawValue;
@@ -12,7 +13,7 @@ use std::{
 };
 use tokio::sync::broadcast;
 use tokio_stream::wrappers::BroadcastStream;
-use tracing::Instrument;
+use tracing_futures::Instrument;
 
 #[cfg(target_arch = "wasm32")]
 use wasmtimer::tokio::sleep;
@@ -45,13 +46,13 @@ const MAX_RETRIES: usize = 3;
 /// Poll `eth_blockNumber` every 5 seconds:
 ///
 /// ```no_run
-/// # async fn example<T: alloy_transport::Transport + Clone>(client: alloy_rpc_client::RpcClient<T>) -> Result<(), Box<dyn std::error::Error>> {
+/// # async fn example(client: alloy_rpc_client::RpcClient) -> Result<(), Box<dyn std::error::Error>> {
 /// use alloy_primitives::U64;
 /// use alloy_rpc_client::PollerBuilder;
 /// use futures_util::StreamExt;
 ///
-/// let poller: PollerBuilder<_, (), U64> = client
-///     .prepare_static_poller("eth_blockNumber", ())
+/// let poller: PollerBuilder<alloy_rpc_client::NoParams, U64> = client
+///     .prepare_static_poller("eth_blockNumber", [])
 ///     .with_poll_interval(std::time::Duration::from_secs(5));
 /// let mut stream = poller.into_stream();
 /// while let Some(block_number) = stream.next().await {
@@ -63,9 +64,9 @@ const MAX_RETRIES: usize = 3;
 // TODO: make this be able to be spawned on the current thread instead of forcing a task.
 #[derive(Debug)]
 #[must_use = "this builder does nothing unless you call `spawn` or `into_stream`"]
-pub struct PollerBuilder<Conn, Params, Resp> {
+pub struct PollerBuilder<Params, Resp> {
     /// The client to poll with.
-    client: WeakClient<Conn>,
+    client: WeakClient,
 
     /// Request Method
     method: Cow<'static, str>,
@@ -79,18 +80,13 @@ pub struct PollerBuilder<Conn, Params, Resp> {
     _pd: PhantomData<fn() -> Resp>,
 }
 
-impl<Conn, Params, Resp> PollerBuilder<Conn, Params, Resp>
+impl<Params, Resp> PollerBuilder<Params, Resp>
 where
-    Conn: Transport + Clone,
-    Params: RpcParam + 'static,
-    Resp: RpcReturn + Clone,
+    Params: RpcSend + 'static,
+    Resp: RpcRecv + Clone,
 {
     /// Create a new poller task.
-    pub fn new(
-        client: WeakClient<Conn>,
-        method: impl Into<Cow<'static, str>>,
-        params: Params,
-    ) -> Self {
+    pub fn new(client: WeakClient, method: impl Into<Cow<'static, str>>, params: Params) -> Self {
         let poll_interval =
             client.upgrade().map_or_else(|| Duration::from_secs(7), |c| c.poll_interval());
         Self {
@@ -152,15 +148,34 @@ where
         self
     }
 
-    /// Starts the poller in a new Tokio task, returning a channel to receive the responses on.
+    /// Starts the poller in a new task, returning a channel to receive the responses on.
     pub fn spawn(self) -> PollChannel<Resp> {
         let (tx, rx) = broadcast::channel(self.channel_size);
-        let span = debug_span!("poller", method = %self.method);
-        self.into_future(tx).instrument(span).spawn_task();
+        self.into_future(tx).spawn_task();
         rx.into()
     }
 
     async fn into_future(self, tx: broadcast::Sender<Resp>) {
+        let mut stream = self.into_stream();
+        while let Some(resp) = stream.next().await {
+            if tx.send(resp).is_err() {
+                debug!("channel closed");
+                break;
+            }
+        }
+    }
+
+    /// Starts the poller and returns the stream of responses.
+    ///
+    /// Note that this does not spawn the poller on a separate task, thus all responses will be
+    /// polled on the current thread once this stream is polled.
+    pub fn into_stream(self) -> impl Stream<Item = Resp> + Unpin {
+        Box::pin(self.into_local_stream())
+    }
+
+    fn into_local_stream(self) -> impl Stream<Item = Resp> {
+        let span = debug_span!("poller", method = %self.method);
+        stream! {
         let mut params = ParamsOnce::Typed(self.params);
         let mut retries = MAX_RETRIES;
         'outer: for _ in 0..self.limit {
@@ -181,12 +196,7 @@ where
             loop {
                 trace!("polling");
                 match client.request(self.method.clone(), params).await {
-                    Ok(resp) => {
-                        if tx.send(resp).is_err() {
-                            debug!("channel closed");
-                            break 'outer;
-                        }
-                    }
+                    Ok(resp) => yield resp,
                     Err(RpcError::Transport(err)) if retries > 0 && err.recoverable() => {
                         debug!(%err, "failed to poll, retrying");
                         retries -= 1;
@@ -203,15 +213,8 @@ where
             trace!(duration=?self.poll_interval, "sleeping");
             sleep(self.poll_interval).await;
         }
-    }
-
-    /// Starts the poller and returns the stream of responses.
-    ///
-    /// Note that this is currently equivalent to `self.spawn().into_stream()`, but this may change
-    /// in the future.
-    // TODO: can we name this type? This should be a different type from `PollChannel::into_stream`
-    pub fn into_stream(self) -> impl Stream<Item = Resp> + Unpin {
-        self.spawn().into_stream()
+        }
+        .instrument(span)
     }
 }
 
@@ -253,7 +256,7 @@ impl<Resp> DerefMut for PollChannel<Resp> {
 
 impl<Resp> PollChannel<Resp>
 where
-    Resp: RpcReturn + Clone,
+    Resp: RpcRecv + Clone,
 {
     /// Resubscribe to the poller task.
     pub fn resubscribe(&self) -> Self {

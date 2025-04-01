@@ -5,6 +5,246 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.6](https://github.com/alloy-rs/alloy/releases/tag/v0.12.6) - 2025-03-18
+
+### Dependencies
+
+- Bump once_cell ([#2185](https://github.com/alloy-rs/alloy/issues/2185))
+
+### Features
+
+- [consensus] Add hoodi genesis hash ([#2210](https://github.com/alloy-rs/alloy/issues/2210))
+- Derive `Serialize` and `Deserialize` for `Recovered<T>` ([#2204](https://github.com/alloy-rs/alloy/issues/2204))
+- Impl into_transaction TxEnvelope ([#2192](https://github.com/alloy-rs/alloy/issues/2192))
+- Add missing U8 conversion ([#2189](https://github.com/alloy-rs/alloy/issues/2189))
+
+### Other
+
+- Add encodable and decodable for `Signed<T>` ([#2193](https://github.com/alloy-rs/alloy/issues/2193))
+
+### Styling
+
+- Update tx fee comment about Transaction trait ([#2208](https://github.com/alloy-rs/alloy/issues/2208))
+
+## [0.12.5](https://github.com/alloy-rs/alloy/releases/tag/v0.12.5) - 2025-03-12
+
+### Features
+
+- [`consensus`] `TxEnvelope` generic over `Eip4844` ([#2169](https://github.com/alloy-rs/alloy/issues/2169))
+
+### Miscellaneous Tasks
+
+- Release 0.12.5
+- Remove associated constant from RlpEcdsaEncodableTx ([#2172](https://github.com/alloy-rs/alloy/issues/2172))
+- Impl Hash for Signed ([#2170](https://github.com/alloy-rs/alloy/issues/2170))
+- Use default type for receipt ([#2168](https://github.com/alloy-rs/alloy/issues/2168))
+
+## [0.12.4](https://github.com/alloy-rs/alloy/releases/tag/v0.12.4) - 2025-03-07
+
+### Bug Fixes
+
+- Use `OnceBox` ([#2165](https://github.com/alloy-rs/alloy/issues/2165))
+
+### Miscellaneous Tasks
+
+- Release 0.12.4
+
+## [0.12.3](https://github.com/alloy-rs/alloy/releases/tag/v0.12.3) - 2025-03-07
+
+### Features
+
+- Add Eip4844 variant generic to TypedTransaction ([#2162](https://github.com/alloy-rs/alloy/issues/2162))
+
+### Miscellaneous Tasks
+
+- Release 0.12.3
+
+## [0.12.2](https://github.com/alloy-rs/alloy/releases/tag/v0.12.2) - 2025-03-07
+
+### Miscellaneous Tasks
+
+- Release 0.12.2
+- Release 0.12.1
+- Add inner_mut ([#2160](https://github.com/alloy-rs/alloy/issues/2160))
+
+## [0.12.0](https://github.com/alloy-rs/alloy/releases/tag/v0.12.0) - 2025-03-07
+
+### Bug Fixes
+
+- Run zepter checks for features of non-workspace dependencies ([#2144](https://github.com/alloy-rs/alloy/issues/2144))
+
+### Dependencies
+
+- [deps] Bump derive_more, strum ([#2074](https://github.com/alloy-rs/alloy/issues/2074))
+
+### Features
+
+- Use `OnceCell` for `Signed::hash` ([#2025](https://github.com/alloy-rs/alloy/issues/2025))
+- Integrate `Recovered` into more types ([#2151](https://github.com/alloy-rs/alloy/issues/2151))
+- Add bincode compat for receipt ([#2149](https://github.com/alloy-rs/alloy/issues/2149))
+- [`consensus`] Impl RlpEncodableTx for TypedTx ([#2150](https://github.com/alloy-rs/alloy/issues/2150))
+- Add conversion helper for eip658 status ([#2148](https://github.com/alloy-rs/alloy/issues/2148))
+- [`consensus`] Separate RlpTx trait functionality ([#2138](https://github.com/alloy-rs/alloy/issues/2138))
+- Add conversions for UnknownTxEnvelope ([#2133](https://github.com/alloy-rs/alloy/issues/2133))
+- Add signabletx impl for typedtx ([#2131](https://github.com/alloy-rs/alloy/issues/2131))
+- Allow getting mutable inner from receipt envelope ([#2116](https://github.com/alloy-rs/alloy/issues/2116))
+- Add more transaction conversion helpers ([#2103](https://github.com/alloy-rs/alloy/issues/2103))
+- Derive `Copy` for `Recovered` ([#2082](https://github.com/alloy-rs/alloy/issues/2082))
+- Add function selector helper ([#2066](https://github.com/alloy-rs/alloy/issues/2066))
+- [`consensus`] Introduce block traits ([#2057](https://github.com/alloy-rs/alloy/issues/2057))
+- Introduce error helper and fallible conversion ([#2052](https://github.com/alloy-rs/alloy/issues/2052))
+
+### Miscellaneous Tasks
+
+- Release 0.12.0
+- Support static error msg ([#2158](https://github.com/alloy-rs/alloy/issues/2158))
+- [`consensus`] Rename `Recovered` methods ([#2155](https://github.com/alloy-rs/alloy/issues/2155))
+- Box value ([#2152](https://github.com/alloy-rs/alloy/issues/2152))
+- Add From<Signed<TypedTransaction>> for TxEnvelope ([#2070](https://github.com/alloy-rs/alloy/issues/2070))
+- Add try_into_pooled conversion ([#2056](https://github.com/alloy-rs/alloy/issues/2056))
+- Additional From TryFrom conversion helpers ([#2054](https://github.com/alloy-rs/alloy/issues/2054))
+
+### Other
+
+- Implement Transaction type on Either type ([#2097](https://github.com/alloy-rs/alloy/issues/2097))
+
+## [0.11.1](https://github.com/alloy-rs/alloy/releases/tag/v0.11.1) - 2025-02-12
+
+### Features
+
+- Add auth count helper fn ([#2007](https://github.com/alloy-rs/alloy/issues/2007))
+- Add blob_count helper fn ([#2005](https://github.com/alloy-rs/alloy/issues/2005))
+
+### Miscellaneous Tasks
+
+- Release 0.11.1
+
+## [0.11.0](https://github.com/alloy-rs/alloy/releases/tag/v0.11.0) - 2025-01-31
+
+### Documentation
+
+- Enable some useful rustdoc features on docs.rs ([#1890](https://github.com/alloy-rs/alloy/issues/1890))
+
+### Features
+
+- Add blockbody ommers generic ([#1964](https://github.com/alloy-rs/alloy/issues/1964))
+- Introduce maybe helpers for blob calc ([#1962](https://github.com/alloy-rs/alloy/issues/1962))
+- Add some doc aliases for recovered ([#1961](https://github.com/alloy-rs/alloy/issues/1961))
+- Couple convenience methods ([#1955](https://github.com/alloy-rs/alloy/issues/1955))
+- Add map fns to rpc transaction type ([#1936](https://github.com/alloy-rs/alloy/issues/1936))
+- Add Recovered::cloned ([#1932](https://github.com/alloy-rs/alloy/issues/1932))
+- Add more derives for `Receipts` ([#1930](https://github.com/alloy-rs/alloy/issues/1930))
+- [consensus] Make fn tx_type() public ([#1926](https://github.com/alloy-rs/alloy/issues/1926))
+- Add rlp length helper ([#1906](https://github.com/alloy-rs/alloy/issues/1906))
+- Remove T: Transport from public APIs ([#1859](https://github.com/alloy-rs/alloy/issues/1859))
+- Add RecoveredTx::try_map_transaction ([#1885](https://github.com/alloy-rs/alloy/issues/1885))
+- Add missing helper fns ([#1880](https://github.com/alloy-rs/alloy/issues/1880))
+
+### Miscellaneous Tasks
+
+- Release 0.11.0
+- Use u64 for base fee in tx info ([#1963](https://github.com/alloy-rs/alloy/issues/1963))
+- Dont enable serde in tests ([#1966](https://github.com/alloy-rs/alloy/issues/1966))
+- Add receipt conversion fns ([#1949](https://github.com/alloy-rs/alloy/issues/1949))
+- Add as_recovered_ref ([#1933](https://github.com/alloy-rs/alloy/issues/1933))
+- [eips] Add super trait `Typed2718` to `Encodable2718` ([#1913](https://github.com/alloy-rs/alloy/issues/1913))
+- [consensus] Replace magic numbers for tx type with constants ([#1911](https://github.com/alloy-rs/alloy/issues/1911))
+- Release 0.10.0
+
+### Other
+
+- Add zepter and propagate features ([#1951](https://github.com/alloy-rs/alloy/issues/1951))
+
+### Testing
+
+- Migrate 4844 rlp tests ([#1928](https://github.com/alloy-rs/alloy/issues/1928))
+
+## [0.9.2](https://github.com/alloy-rs/alloy/releases/tag/v0.9.2) - 2025-01-03
+
+### Miscellaneous Tasks
+
+- Release 0.9.2
+
+## [0.9.1](https://github.com/alloy-rs/alloy/releases/tag/v0.9.1) - 2024-12-30
+
+### Features
+
+- Add deref for block ([#1868](https://github.com/alloy-rs/alloy/issues/1868))
+
+### Miscellaneous Tasks
+
+- Release 0.9.1
+- Add arbitrary for blockbody ([#1867](https://github.com/alloy-rs/alloy/issues/1867))
+
+## [0.9.0](https://github.com/alloy-rs/alloy/releases/tag/v0.9.0) - 2024-12-30
+
+### Bug Fixes
+
+- Use u64 for all gas values ([#1848](https://github.com/alloy-rs/alloy/issues/1848))
+
+### Features
+
+- Add tryfrom payloadv1 for block ([#1851](https://github.com/alloy-rs/alloy/issues/1851))
+- Add match functions ([#1847](https://github.com/alloy-rs/alloy/issues/1847))
+- Add BlockConditional ([#1846](https://github.com/alloy-rs/alloy/issues/1846))
+- EIP-7840 ([#1828](https://github.com/alloy-rs/alloy/issues/1828))
+- Return tagged variant deserde error ([#1810](https://github.com/alloy-rs/alloy/issues/1810))
+- [pectra] Revert EIP-7742 ([#1807](https://github.com/alloy-rs/alloy/issues/1807))
+- Add map transactions fn ([#1827](https://github.com/alloy-rs/alloy/issues/1827))
+- Add helpers for block ([#1816](https://github.com/alloy-rs/alloy/issues/1816))
+- Add helpers to any tx envelope ([#1817](https://github.com/alloy-rs/alloy/issues/1817))
+
+### Miscellaneous Tasks
+
+- Rm unused alloy-signer dep ([#1862](https://github.com/alloy-rs/alloy/issues/1862))
+- Rm non exhaustive from ReceiptEnvelope ([#1843](https://github.com/alloy-rs/alloy/issues/1843))
+- Rm non exhaustive for envelope ([#1842](https://github.com/alloy-rs/alloy/issues/1842))
+- Map header fns ([#1840](https://github.com/alloy-rs/alloy/issues/1840))
+
+### Other
+
+- Change `chain_id` type to `U256` ([#1839](https://github.com/alloy-rs/alloy/issues/1839))
+
+## [0.8.3](https://github.com/alloy-rs/alloy/releases/tag/v0.8.3) - 2024-12-20
+
+### Features
+
+- Add serde for block ([#1814](https://github.com/alloy-rs/alloy/issues/1814))
+
+### Miscellaneous Tasks
+
+- Release 0.8.3
+
+## [0.8.2](https://github.com/alloy-rs/alloy/releases/tag/v0.8.2) - 2024-12-19
+
+### Bug Fixes
+
+- Relax legacy chain id check ([#1809](https://github.com/alloy-rs/alloy/issues/1809))
+
+### Miscellaneous Tasks
+
+- Release 0.8.2
+- Manual default impl ([#1813](https://github.com/alloy-rs/alloy/issues/1813))
+- Misc clippy ([#1812](https://github.com/alloy-rs/alloy/issues/1812))
+
+## [0.8.1](https://github.com/alloy-rs/alloy/releases/tag/v0.8.1) - 2024-12-16
+
+### Features
+
+- Add some helper functions for blockbody ([#1796](https://github.com/alloy-rs/alloy/issues/1796))
+- Add info tx types ([#1793](https://github.com/alloy-rs/alloy/issues/1793))
+- Reth's block body fns ([#1775](https://github.com/alloy-rs/alloy/issues/1775))
+- Add serde for `TxType` ([#1780](https://github.com/alloy-rs/alloy/issues/1780))
+
+### Miscellaneous Tasks
+
+- Release 0.8.1
+- Add arbitrary for block ([#1797](https://github.com/alloy-rs/alloy/issues/1797))
+- Add helpers to unwrap a variant ([#1792](https://github.com/alloy-rs/alloy/issues/1792))
+- Add clone_tx ([#1791](https://github.com/alloy-rs/alloy/issues/1791))
+- Add TxReceipt default helpers ([#1783](https://github.com/alloy-rs/alloy/issues/1783))
+- Add consensus helper methods to BlockHeader ([#1781](https://github.com/alloy-rs/alloy/issues/1781))
+
 ## [0.8.0](https://github.com/alloy-rs/alloy/releases/tag/v0.8.0) - 2024-12-10
 
 ### Bug Fixes
@@ -18,7 +258,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Miscellaneous Tasks
 
-- Release 0.8.0
+- Release 0.8.0 ([#1778](https://github.com/alloy-rs/alloy/issues/1778))
 - Introduce recovered and recoverable ([#1768](https://github.com/alloy-rs/alloy/issues/1768))
 
 ### Other
@@ -28,11 +268,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.7.3](https://github.com/alloy-rs/alloy/releases/tag/v0.7.3) - 2024-12-05
 
+### Miscellaneous Tasks
+
+- Release 0.7.3
+
+## [Unreleased](https://github.com/alloy-rs/alloy/compare/v0.7.0...HEAD)
+
 ### Bug Fixes
 
 - Adjust EIP-7742 to latest spec ([#1713](https://github.com/alloy-rs/alloy/issues/1713))
-- Pass slice to RlpReceipt::rlp_decode_fields ([#1696](https://github.com/alloy-rs/alloy/issues/1696))
-- [`consensus`] Serde aliases to avoid breaking changes ([#1654](https://github.com/alloy-rs/alloy/issues/1654))
 
 ### Documentation
 
@@ -48,6 +292,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Receipt root fn ([#1708](https://github.com/alloy-rs/alloy/issues/1708))
 - Impl `Encodable2718` for `ReceiptWithBloom` ([#1719](https://github.com/alloy-rs/alloy/issues/1719))
 - Add blob_gas_used ([#1704](https://github.com/alloy-rs/alloy/issues/1704))
+
+### Miscellaneous Tasks
+
+- Export storage root fns ([#1756](https://github.com/alloy-rs/alloy/issues/1756))
+- Re-export stateroot fns ([#1753](https://github.com/alloy-rs/alloy/issues/1753))
+- Rm redundant generic ([#1737](https://github.com/alloy-rs/alloy/issues/1737))
+- Relax ommers root fn ([#1736](https://github.com/alloy-rs/alloy/issues/1736))
+- Add missing from impl ([#1732](https://github.com/alloy-rs/alloy/issues/1732))
+- Release 0.7.2 ([#1729](https://github.com/alloy-rs/alloy/issues/1729))
+
+## [0.7.0](https://github.com/alloy-rs/alloy/releases/tag/v0.7.0) - 2024-11-28
+
+### Bug Fixes
+
+- Pass slice to RlpReceipt::rlp_decode_fields ([#1696](https://github.com/alloy-rs/alloy/issues/1696))
+- [`consensus`] Serde aliases to avoid breaking changes ([#1654](https://github.com/alloy-rs/alloy/issues/1654))
+
+### Features
+
 - EIP-7742 ([#1600](https://github.com/alloy-rs/alloy/issues/1600))
 - Add parent_num_hash to BlockHeader ([#1687](https://github.com/alloy-rs/alloy/issues/1687))
 - Modifiy ReceiptWithBloom and associated impls to use with Reth ([#1672](https://github.com/alloy-rs/alloy/issues/1672))
@@ -61,13 +324,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Miscellaneous Tasks
 
-- Release 0.7.3
-- Export storage root fns ([#1756](https://github.com/alloy-rs/alloy/issues/1756))
-- Re-export stateroot fns ([#1753](https://github.com/alloy-rs/alloy/issues/1753))
-- Rm redundant generic ([#1737](https://github.com/alloy-rs/alloy/issues/1737))
-- Relax ommers root fn ([#1736](https://github.com/alloy-rs/alloy/issues/1736))
-- Add missing from impl ([#1732](https://github.com/alloy-rs/alloy/issues/1732))
-- Release 0.7.2 ([#1729](https://github.com/alloy-rs/alloy/issues/1729))
 - Release 0.7.0
 - Relax from impl ([#1698](https://github.com/alloy-rs/alloy/issues/1698))
 - Make clippy happy ([#1677](https://github.com/alloy-rs/alloy/issues/1677))
@@ -304,6 +560,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Miscellaneous Tasks
 
 - Release 0.3.6
+
+## [0.3.5](https://github.com/alloy-rs/alloy/releases/tag/v0.3.5) - 2024-09-13
+
+### Miscellaneous Tasks
+
 - Release 0.3.5
 
 ## [0.3.4](https://github.com/alloy-rs/alloy/releases/tag/v0.3.4) - 2024-09-13
@@ -402,26 +663,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.4](https://github.com/alloy-rs/alloy/releases/tag/v0.1.4) - 2024-07-08
 
+### Features
+
+- Impl Transaction for TxEnvelope ([#1006](https://github.com/alloy-rs/alloy/issues/1006))
+
+### Miscellaneous Tasks
+
+- Release 0.1.4
+
+### Other
+
+- Remove signature.v parity before calculating tx hash ([#893](https://github.com/alloy-rs/alloy/issues/893))
+
+## [0.1.3](https://github.com/alloy-rs/alloy/releases/tag/v0.1.3) - 2024-06-25
+
 ### Documentation
 
 - Copy/paste error of eip-7251 link ([#961](https://github.com/alloy-rs/alloy/issues/961))
 
 ### Features
 
-- Impl Transaction for TxEnvelope ([#1006](https://github.com/alloy-rs/alloy/issues/1006))
 - Add eip-7702 helpers ([#950](https://github.com/alloy-rs/alloy/issues/950))
 
 ### Miscellaneous Tasks
 
-- Release 0.1.4
 - Release 0.1.3
 - [eips] Make `sha2` optional, add `kzg-sidecar` feature ([#949](https://github.com/alloy-rs/alloy/issues/949))
 
-### Other
-
-- Remove signature.v parity before calculating tx hash ([#893](https://github.com/alloy-rs/alloy/issues/893))
-
 ## [0.1.2](https://github.com/alloy-rs/alloy/releases/tag/v0.1.2) - 2024-06-19
+
+### Documentation
+
+- Add per-crate changelogs ([#914](https://github.com/alloy-rs/alloy/issues/914))
+
+### Features
+
+- Add eip-7251 consolidation request ([#919](https://github.com/alloy-rs/alloy/issues/919))
+
+### Miscellaneous Tasks
+
+- Release 0.1.2
+- Update changelogs for v0.1.1 ([#922](https://github.com/alloy-rs/alloy/issues/922))
+- Add docs.rs metadata to all manifests ([#917](https://github.com/alloy-rs/alloy/issues/917))
+
+## [0.1.1](https://github.com/alloy-rs/alloy/releases/tag/v0.1.1) - 2024-06-17
 
 ### Bug Fixes
 
@@ -450,12 +735,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Documentation
 
-- Add per-crate changelogs ([#914](https://github.com/alloy-rs/alloy/issues/914))
 - Update descriptions and top level summary ([#128](https://github.com/alloy-rs/alloy/issues/128))
 
 ### Features
 
-- Add eip-7251 consolidation request ([#919](https://github.com/alloy-rs/alloy/issues/919))
 - Derive serde for header ([#902](https://github.com/alloy-rs/alloy/issues/902))
 - Move `{,With}OtherFields` to serde crate ([#892](https://github.com/alloy-rs/alloy/issues/892))
 - Add as_ is_ functions to envelope ([#872](https://github.com/alloy-rs/alloy/issues/872))
@@ -492,9 +775,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Miscellaneous Tasks
 
-- Release 0.1.2
-- Update changelogs for v0.1.1 ([#922](https://github.com/alloy-rs/alloy/issues/922))
-- Add docs.rs metadata to all manifests ([#917](https://github.com/alloy-rs/alloy/issues/917))
 - [clippy] Apply lint suggestions ([#903](https://github.com/alloy-rs/alloy/issues/903))
 - Rm unused txtype mod ([#879](https://github.com/alloy-rs/alloy/issues/879))
 - [other] Use type aliases where possible to improve clarity  ([#859](https://github.com/alloy-rs/alloy/issues/859))

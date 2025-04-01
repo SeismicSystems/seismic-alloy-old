@@ -10,7 +10,7 @@ use alloy_eips::eip4844::BLOB_TX_MIN_BLOB_GASPRICE;
 use alloy_json_rpc::RpcError;
 use alloy_network::{Network, TransactionBuilder, TransactionBuilder4844};
 use alloy_rpc_types_eth::BlockNumberOrTag;
-use alloy_transport::{Transport, TransportResult};
+use alloy_transport::TransportResult;
 use futures::FutureExt;
 
 /// An enum over the different types of gas fillable.
@@ -48,14 +48,14 @@ pub enum GasFillable {
 /// # Example
 ///
 /// ```
-/// # use alloy_network::{NetworkWallet, EthereumWallet, Ethereum};
+/// # use alloy_network::{Ethereum};
 /// # use alloy_rpc_types_eth::TransactionRequest;
 /// # use alloy_provider::{ProviderBuilder, RootProvider, Provider};
-/// # async fn test<W: NetworkWallet<Ethereum> + Clone>(url: url::Url, wallet: W) -> Result<(), Box<dyn std::error::Error>> {
-/// let provider = ProviderBuilder::new()
-///     .with_gas_estimation()
-///     .wallet(wallet)
-///     .on_http(url);
+/// # use alloy_signer_local::PrivateKeySigner;
+/// # async fn test(url: url::Url) -> Result<(), Box<dyn std::error::Error>> {
+/// let pk: PrivateKeySigner = "0x...".parse()?;
+/// let provider =
+///     ProviderBuilder::<_, _, Ethereum>::default().with_gas_estimation().wallet(pk).on_http(url);
 ///
 /// provider.send_transaction(TransactionRequest::default()).await;
 /// # Ok(())
@@ -65,14 +65,13 @@ pub enum GasFillable {
 pub struct GasFiller;
 
 impl GasFiller {
-    async fn prepare_legacy<P, T, N>(
+    async fn prepare_legacy<P, N>(
         &self,
         provider: &P,
         tx: &N::TransactionRequest,
     ) -> TransportResult<GasFillable>
     where
-        P: Provider<T, N>,
-        T: Transport + Clone,
+        P: Provider<N>,
         N: Network,
     {
         let gas_price_fut = tx.gas_price().map_or_else(
@@ -81,7 +80,7 @@ impl GasFiller {
         );
 
         let gas_limit_fut = tx.gas_limit().map_or_else(
-            || provider.estimate_gas(tx).into_future().right_future(),
+            || provider.estimate_gas(tx.clone()).into_future().right_future(),
             |gas_limit| async move { Ok(gas_limit) }.left_future(),
         );
 
@@ -90,18 +89,17 @@ impl GasFiller {
         Ok(GasFillable::Legacy { gas_limit, gas_price })
     }
 
-    async fn prepare_1559<P, T, N>(
+    async fn prepare_1559<P, N>(
         &self,
         provider: &P,
         tx: &N::TransactionRequest,
     ) -> TransportResult<GasFillable>
     where
-        P: Provider<T, N>,
-        T: Transport + Clone,
+        P: Provider<N>,
         N: Network,
     {
         let gas_limit_fut = tx.gas_limit().map_or_else(
-            || provider.estimate_gas(tx).into_future().right_future(),
+            || provider.estimate_gas(tx.clone()).into_future().right_future(),
             |gas_limit| async move { Ok(gas_limit) }.left_future(),
         );
 
@@ -111,7 +109,7 @@ impl GasFiller {
             async move { Ok(Eip1559Estimation { max_fee_per_gas, max_priority_fee_per_gas }) }
                 .left_future()
         } else {
-            provider.estimate_eip1559_fees(None).right_future()
+            provider.estimate_eip1559_fees().right_future()
         };
 
         let (gas_limit, estimate) = futures::try_join!(gas_limit_fut, eip1559_fees_fut)?;
@@ -141,14 +139,13 @@ impl<N: Network> TxFiller<N> for GasFiller {
 
     fn fill_sync(&self, _tx: &mut SendableTx<N>) {}
 
-    async fn prepare<P, T>(
+    async fn prepare<P>(
         &self,
         provider: &P,
         tx: &<N as Network>::TransactionRequest,
     ) -> TransportResult<Self::Fillable>
     where
-        P: Provider<T, N>,
-        T: Transport + Clone,
+        P: Provider<N>,
     {
         if tx.gas_price().is_some() || tx.is_seismic() {
             self.prepare_legacy(provider, tx).await
@@ -208,14 +205,13 @@ where
 
     fn fill_sync(&self, _tx: &mut SendableTx<N>) {}
 
-    async fn prepare<P, T>(
+    async fn prepare<P>(
         &self,
         provider: &P,
         tx: &<N as Network>::TransactionRequest,
     ) -> TransportResult<Self::Fillable>
     where
-        P: Provider<T, N>,
-        T: Transport + Clone,
+        P: Provider<N>,
     {
         if let Some(max_fee_per_blob_gas) = tx.max_fee_per_blob_gas() {
             if max_fee_per_blob_gas >= BLOB_TX_MIN_BLOB_GASPRICE {
@@ -256,7 +252,7 @@ mod tests {
 
     #[tokio::test]
     async fn no_gas_price_or_limit() {
-        let provider = ProviderBuilder::new().with_recommended_fillers().on_anvil_with_wallet();
+        let provider = ProviderBuilder::new().on_anvil_with_wallet();
 
         // GasEstimationLayer requires chain_id to be set to handle EIP-1559 tx
         let tx = TransactionRequest {
@@ -276,7 +272,7 @@ mod tests {
 
     #[tokio::test]
     async fn no_gas_limit() {
-        let provider = ProviderBuilder::new().with_recommended_fillers().on_anvil_with_wallet();
+        let provider = ProviderBuilder::new().on_anvil_with_wallet();
 
         let gas_price = provider.get_gas_price().await.unwrap();
         let tx = TransactionRequest {
@@ -295,7 +291,7 @@ mod tests {
 
     #[tokio::test]
     async fn no_max_fee_per_blob_gas() {
-        let provider = ProviderBuilder::new().with_recommended_fillers().on_anvil_with_wallet();
+        let provider = ProviderBuilder::new().on_anvil_with_wallet();
 
         let sidecar: SidecarBuilder<SimpleCoder> = SidecarBuilder::from_slice(b"Hello World");
         let sidecar = sidecar.build().unwrap();
@@ -316,13 +312,13 @@ mod tests {
         assert_eq!(receipt.gas_used, 21000);
         assert_eq!(
             receipt.blob_gas_used.expect("Expected to be EIP-4844 transaction"),
-            DATA_GAS_PER_BLOB as u128
+            DATA_GAS_PER_BLOB
         );
     }
 
     #[tokio::test]
     async fn zero_max_fee_per_blob_gas() {
-        let provider = ProviderBuilder::new().with_recommended_fillers().on_anvil_with_wallet();
+        let provider = ProviderBuilder::new().on_anvil_with_wallet();
 
         let sidecar: SidecarBuilder<SimpleCoder> = SidecarBuilder::from_slice(b"Hello World");
         let sidecar = sidecar.build().unwrap();
@@ -344,7 +340,7 @@ mod tests {
         assert_eq!(receipt.gas_used, 21000);
         assert_eq!(
             receipt.blob_gas_used.expect("Expected to be EIP-4844 transaction"),
-            DATA_GAS_PER_BLOB as u128
+            DATA_GAS_PER_BLOB
         );
     }
 }
