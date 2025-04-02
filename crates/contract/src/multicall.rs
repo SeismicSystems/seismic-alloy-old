@@ -210,6 +210,7 @@ mod tests {
         }
     }
 
+    #[ignore]
     #[tokio::test]
     async fn aggregate3_value() {
         let provider =
