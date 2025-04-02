@@ -210,7 +210,7 @@ mod tests {
         }
     }
 
-    #[ignore]
+    #[ignore] // seismic: ignore this test because rpc url doesn't support value
     #[tokio::test]
     async fn aggregate3_value() {
         let provider =

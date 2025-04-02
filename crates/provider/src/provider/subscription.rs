@@ -13,8 +13,10 @@ where
     R: RpcRecv,
     N: Network,
 {
+    #[allow(unused)]
     root: RootProvider<N>,
     method: Cow<'static, str>,
+    #[allow(unused)]
     params: Option<P>,
     channel_size: Option<usize>,
     _marker: std::marker::PhantomData<fn() -> R>,
