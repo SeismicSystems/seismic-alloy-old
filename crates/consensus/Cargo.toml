@@ -55,7 +55,7 @@ derive_more = { workspace = true, features = [
 ], default-features = false }
 auto_impl.workspace = true
 anyhow = "1.0"
-jsonrpsee.workspace = true
+jsonrpsee = { workspace = true, features = ["client"] }
 
 thiserror.workspace = true
 either.workspace = true
