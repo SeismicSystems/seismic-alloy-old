@@ -1,6 +1,8 @@
 use crate::RootProvider;
 use alloy_json_rpc::{RpcRecv, RpcSend};
 use alloy_network::{Ethereum, Network};
+#[cfg(feature = "pubsub")]
+use alloy_transport::TransportResult;
 use std::borrow::Cow;
 
 /// A general-purpose subscription request builder
