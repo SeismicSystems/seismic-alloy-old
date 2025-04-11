@@ -4,6 +4,8 @@ use alloy_network::{Ethereum, Network};
 use alloy_transport::TransportResult;
 use std::{borrow::Cow, future::Future, pin::Pin};
 
+use super::Provider;
+
 /// A general-purpose subscription request builder
 ///
 /// This struct allows configuring subscription parameters and channel size
