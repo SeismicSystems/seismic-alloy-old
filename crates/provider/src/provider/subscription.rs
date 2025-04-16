@@ -1,8 +1,7 @@
 use crate::RootProvider;
 use alloy_json_rpc::{RpcRecv, RpcSend};
 use alloy_network::{Ethereum, Network};
-use alloy_transport::TransportResult;
-use std::{borrow::Cow, future::Future, pin::Pin};
+use std::borrow::Cow;
 
 use super::Provider;
 
