@@ -73,18 +73,6 @@ impl<Ok, Err> TraceResult<Ok, Err> {
     }
 }
 
-impl<Err> TraceResult<crate::geth::GethTrace, Err> {
-    /// Shield the inputs of a trace result.
-    pub fn shield_inputs(self) -> Self {
-        match self {
-            Self::Success { result, tx_hash } => {
-                Self::Success { result: result.shield_inputs(), tx_hash }
-            }
-            Self::Error { error, tx_hash } => Self::Error { error, tx_hash },
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

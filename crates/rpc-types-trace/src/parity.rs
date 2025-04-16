@@ -53,13 +53,6 @@ impl TraceResults {
             r.set_gas_used(gas_used)
         }
     }
-
-    /// Shield the inputs and call stack of a trace results.
-    pub fn shield_inputs(mut self) -> Self {
-        self.trace = self.trace.into_iter().map(|trace| trace.shield_inputs()).collect();
-        self.vm_trace = None;
-        self
-    }
 }
 
 /// A `FullTrace` with an additional transaction hash
@@ -250,17 +243,6 @@ impl Action {
             Self::Reward(_) => ActionType::Reward,
         }
     }
-
-    /// Shield the inputs of an action.
-    pub fn shield_inputs(self) -> Self {
-        match self {
-            Self::Call(action) => Self::Call(action.shield_inputs()),
-            // TODO: do we have to shield these?
-            Self::Create(action) => Self::Create(action),
-            Self::Selfdestruct(action) => Self::Selfdestruct(action),
-            Self::Reward(action) => Self::Reward(action),
-        }
-    }
 }
 
 /// An external action type.
@@ -318,16 +300,6 @@ pub struct CallAction {
     pub value: U256,
     /// Transaction type. Seismic tx's will have input shielded (set to empty bytes)
     pub tx_type: isize,
-}
-
-impl CallAction {
-    /// Shield the inputs of a call action.
-    pub fn shield_inputs(mut self) -> Self {
-        if self.tx_type == alloy_consensus::transaction::TxSeismic::TX_TYPE as isize {
-            self.input = Bytes::new();
-        }
-        self
-    }
 }
 
 /// Creation method.
@@ -489,14 +461,6 @@ pub struct TransactionTrace {
     pub trace_address: Vec<usize>,
 }
 
-impl TransactionTrace {
-    /// Shield the inputs of a transaction trace.
-    pub fn shield_inputs(mut self) -> Self {
-        self.action = self.action.shield_inputs();
-        self
-    }
-}
-
 /// A wrapper for [TransactionTrace] that includes additional information about the transaction.
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -530,11 +494,6 @@ impl LocalizedTransactionTrace {
         if let Some(res) = self.trace.result.as_mut() {
             res.set_gas_used(gas_used);
         }
-    }
-    /// Shield the inputs of transactions.
-    pub fn shield_inputs(mut self) -> Self {
-        self.trace.action = self.trace.action.shield_inputs();
-        self
     }
 }
 
