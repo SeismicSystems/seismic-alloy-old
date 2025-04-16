@@ -187,6 +187,8 @@ impl Signer for GcpSigner {
     }
 }
 
+alloy_network::impl_into_wallet!(GcpSigner);
+
 impl GcpSigner {
     /// Instantiate a new signer from an existing `Client`, keyring reference, key ID, and version.
     ///
@@ -229,7 +231,11 @@ async fn request_get_pubkey(
     client: &Client,
     kms_key_name: &str,
 ) -> Result<PublicKey, GcpSignerError> {
-    let mut request = tonic::Request::new(GetPublicKeyRequest { name: kms_key_name.to_string() });
+    let mut request = tonic::Request::new(GetPublicKeyRequest {
+        name: kms_key_name.to_string(),
+        // When not specified, the default will be used.
+        public_key_format: Default::default(),
+    });
     request
         .metadata_mut()
         .insert("x-goog-request-params", format!("name={}", &kms_key_name).parse().unwrap());

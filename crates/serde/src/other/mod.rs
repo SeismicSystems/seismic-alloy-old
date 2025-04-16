@@ -1,6 +1,6 @@
 //! Support for capturing other fields.
 
-use alloc::{collections::BTreeMap, string::String};
+use alloc::{collections::BTreeMap, format, string::String};
 use core::{
     fmt,
     ops::{Deref, DerefMut},
@@ -34,6 +34,19 @@ impl OtherFields {
         Self { inner }
     }
 
+    /// Inserts a given value as serialized [`serde_json::Value`] into the map.
+    pub fn insert_value(&mut self, key: String, value: impl Serialize) -> serde_json::Result<()> {
+        self.inner.insert(key, serde_json::to_value(value)?);
+        Ok(())
+    }
+
+    /// Inserts a given value as serialized [`serde_json::Value`] into the map and returns the
+    /// updated instance.
+    pub fn with_value(mut self, key: String, value: impl Serialize) -> serde_json::Result<Self> {
+        self.insert_value(key, value)?;
+        Ok(self)
+    }
+
     /// Deserialized this type into another container type.
     pub fn deserialize_as<T: DeserializeOwned>(&self) -> serde_json::Result<T> {
         serde_json::from_value(Value::Object(self.inner.clone().into_iter().collect()))
@@ -59,6 +72,18 @@ impl OtherFields {
         key: impl AsRef<str>,
     ) -> Option<serde_json::Result<V>> {
         self.get_with(key, serde_json::from_value)
+    }
+
+    /// Returns the deserialized value of the field.
+    ///
+    /// Returns an error if the field is missing
+    pub fn try_get_deserialized<V: DeserializeOwned>(
+        &self,
+        key: impl AsRef<str>,
+    ) -> serde_json::Result<V> {
+        let key = key.as_ref();
+        self.get_deserialized(key)
+            .ok_or_else(|| serde::de::Error::custom(format!("Missing field `{}`", key)))?
     }
 
     /// Removes the deserialized value of the field, if it exists
@@ -185,6 +210,16 @@ impl<T> WithOtherFields<T> {
     /// Creates a new [`WithOtherFields`] instance.
     pub fn new(inner: T) -> Self {
         Self { inner, other: Default::default() }
+    }
+
+    /// Consumes the type and returns the wrapped value.
+    pub fn into_inner(self) -> T {
+        self.inner
+    }
+
+    /// Returns the wrapped value.
+    pub fn inner(&self) -> &T {
+        &self.inner
     }
 }
 

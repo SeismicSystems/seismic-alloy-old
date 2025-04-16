@@ -1,7 +1,9 @@
-use crate::{SignableTransaction, Signed, Transaction, TxType, Typed2718};
+use crate::{SignableTransaction, Signed, Transaction, TxType};
 
 use alloc::vec::Vec;
-use alloy_eips::{eip2930::AccessList, eip4844::DATA_GAS_PER_BLOB, eip7702::SignedAuthorization};
+use alloy_eips::{
+    eip2930::AccessList, eip4844::DATA_GAS_PER_BLOB, eip7702::SignedAuthorization, Typed2718,
+};
 use alloy_primitives::{
     Address, Bytes, ChainId, PrimitiveSignature as Signature, TxKind, B256, U256,
 };
@@ -15,7 +17,7 @@ pub use alloy_eips::eip4844::BlobTransactionSidecar;
 #[doc(inline)]
 pub use alloy_eips::eip4844::BlobTransactionValidationError;
 
-use super::RlpEcdsaTx;
+use super::{RlpEcdsaDecodableTx, RlpEcdsaEncodableTx};
 
 /// [EIP-4844 Blob Transaction](https://eips.ethereum.org/EIPS/eip-4844#blob-transaction)
 ///
@@ -288,9 +290,7 @@ impl Typed2718 for TxEip4844 {
     }
 }
 
-impl RlpEcdsaTx for TxEip4844Variant {
-    const DEFAULT_TX_TYPE: u8 = { Self::tx_type() as u8 };
-
+impl RlpEcdsaEncodableTx for TxEip4844Variant {
     fn rlp_encoded_fields_length(&self) -> usize {
         match self {
             Self::TxEip4844(inner) => inner.rlp_encoded_fields_length(),
@@ -318,6 +318,17 @@ impl RlpEcdsaTx for TxEip4844Variant {
             Self::TxEip4844WithSidecar(inner) => inner.rlp_encode_signed(signature, out),
         }
     }
+
+    fn tx_hash_with_type(&self, signature: &Signature, ty: u8) -> alloy_primitives::TxHash {
+        match self {
+            Self::TxEip4844(inner) => inner.tx_hash_with_type(signature, ty),
+            Self::TxEip4844WithSidecar(inner) => inner.tx_hash_with_type(signature, ty),
+        }
+    }
+}
+
+impl RlpEcdsaDecodableTx for TxEip4844Variant {
+    const DEFAULT_TX_TYPE: u8 = { Self::tx_type() as u8 };
 
     fn rlp_decode_fields(buf: &mut &[u8]) -> alloy_rlp::Result<Self> {
         let needle = &mut &**buf;
@@ -369,13 +380,6 @@ impl RlpEcdsaTx for TxEip4844Variant {
         }
         TxEip4844::rlp_decode_with_signature(buf).map(|(tx, signature)| (tx.into(), signature))
     }
-
-    fn tx_hash_with_type(&self, signature: &Signature, ty: u8) -> alloy_primitives::TxHash {
-        match self {
-            Self::TxEip4844(inner) => inner.tx_hash_with_type(signature, ty),
-            Self::TxEip4844WithSidecar(inner) => inner.tx_hash_with_type(signature, ty),
-        }
-    }
 }
 
 impl Typed2718 for TxEip4844Variant {
@@ -407,12 +411,6 @@ impl SignableTransaction<Signature> for TxEip4844Variant {
 
     fn payload_len_for_signature(&self) -> usize {
         self.tx().payload_len_for_signature()
-    }
-
-    fn into_signed(self, signature: Signature) -> Signed<Self> {
-        let hash = self.tx_hash(&signature);
-
-        Signed::new_unchecked(self, signature, hash)
     }
 }
 
@@ -547,9 +545,7 @@ impl TxEip4844 {
     }
 }
 
-impl RlpEcdsaTx for TxEip4844 {
-    const DEFAULT_TX_TYPE: u8 = { Self::tx_type() as u8 };
-
+impl RlpEcdsaEncodableTx for TxEip4844 {
     fn rlp_encoded_fields_length(&self) -> usize {
         self.chain_id.length()
             + self.nonce.length()
@@ -577,6 +573,10 @@ impl RlpEcdsaTx for TxEip4844 {
         self.max_fee_per_blob_gas.encode(out);
         self.blob_versioned_hashes.encode(out);
     }
+}
+
+impl RlpEcdsaDecodableTx for TxEip4844 {
+    const DEFAULT_TX_TYPE: u8 = { Self::tx_type() as u8 };
 
     fn rlp_decode_fields(buf: &mut &[u8]) -> alloy_rlp::Result<Self> {
         Ok(Self {
@@ -607,11 +607,6 @@ impl SignableTransaction<Signature> for TxEip4844 {
 
     fn payload_len_for_signature(&self) -> usize {
         self.length() + 1
-    }
-
-    fn into_signed(self, signature: Signature) -> Signed<Self> {
-        let hash = self.tx_hash(&signature);
-        Signed::new_unchecked(self, signature, hash)
     }
 }
 
@@ -834,13 +829,6 @@ impl SignableTransaction<Signature> for TxEip4844WithSidecar {
         // The sidecar is NOT included.
         self.tx.payload_len_for_signature()
     }
-
-    fn into_signed(self, signature: Signature) -> Signed<Self, Signature> {
-        // important: must hash the tx WITHOUT the sidecar
-        let hash = self.tx_hash(&signature);
-
-        Signed::new_unchecked(self, signature, hash)
-    }
 }
 
 impl crate::transaction::ShieldableTransaction for TxEip4844WithSidecar {
@@ -939,9 +927,7 @@ impl Typed2718 for TxEip4844WithSidecar {
     }
 }
 
-impl RlpEcdsaTx for TxEip4844WithSidecar {
-    const DEFAULT_TX_TYPE: u8 = { Self::tx_type() as u8 };
-
+impl RlpEcdsaEncodableTx for TxEip4844WithSidecar {
     fn rlp_encoded_fields_length(&self) -> usize {
         self.sidecar.rlp_encoded_fields_length() + self.tx.rlp_encoded_length()
     }
@@ -962,6 +948,15 @@ impl RlpEcdsaTx for TxEip4844WithSidecar {
         self.tx.rlp_encode_signed(signature, out);
         self.sidecar.rlp_encode_fields(out);
     }
+
+    fn tx_hash_with_type(&self, signature: &Signature, ty: u8) -> alloy_primitives::TxHash {
+        // eip4844 tx_hash is always based on the non-sidecar encoding
+        self.tx.tx_hash_with_type(signature, ty)
+    }
+}
+
+impl RlpEcdsaDecodableTx for TxEip4844WithSidecar {
+    const DEFAULT_TX_TYPE: u8 = { Self::tx_type() as u8 };
 
     fn rlp_decode_fields(buf: &mut &[u8]) -> alloy_rlp::Result<Self> {
         let tx = TxEip4844::rlp_decode(buf)?;
@@ -984,11 +979,6 @@ impl RlpEcdsaTx for TxEip4844WithSidecar {
         }
 
         Ok((Self { tx, sidecar }, signature))
-    }
-
-    fn tx_hash_with_type(&self, signature: &Signature, ty: u8) -> alloy_primitives::TxHash {
-        // eip4844 tx_hash is always based on the non-sidecar encoding
-        self.tx.tx_hash_with_type(signature, ty)
     }
 }
 

@@ -22,14 +22,14 @@ use crate::{
 /// # Example
 ///
 /// ```
-/// # use alloy_network::{NetworkWallet, EthereumWallet, Ethereum};
+/// # use alloy_network::{Ethereum};
 /// # use alloy_rpc_types_eth::TransactionRequest;
 /// # use alloy_provider::{ProviderBuilder, RootProvider, Provider};
-/// # async fn test<W: NetworkWallet<Ethereum> + Clone>(url: url::Url, wallet: W) -> Result<(), Box<dyn std::error::Error>> {
-/// let provider = ProviderBuilder::new()
-///     .with_chain_id(1)
-///     .wallet(wallet)
-///     .on_http(url);
+/// # use alloy_signer_local::PrivateKeySigner;
+/// # async fn test(url: url::Url) -> Result<(), Box<dyn std::error::Error>> {
+/// let pk: PrivateKeySigner = "0x...".parse()?;
+/// let provider =
+///     ProviderBuilder::<_, _, Ethereum>::default().with_chain_id(1).wallet(pk).on_http(url);
 ///
 /// provider.send_transaction(TransactionRequest::default()).await;
 /// # Ok(())
@@ -70,18 +70,17 @@ impl<N: Network> TxFiller<N> for ChainIdFiller {
                 if builder.chain_id().is_none() {
                     builder.set_chain_id(*chain_id)
                 }
-            };
+            }
         }
     }
 
-    async fn prepare<P, T>(
+    async fn prepare<P>(
         &self,
         provider: &P,
         _tx: &N::TransactionRequest,
     ) -> TransportResult<Self::Fillable>
     where
-        P: crate::Provider<T, N>,
-        T: alloy_transport::Transport + Clone,
+        P: crate::Provider<N>,
     {
         match self.0.get().copied() {
             Some(chain_id) => Ok(chain_id),

@@ -13,7 +13,11 @@ exclude.workspace = true
 
 [package.metadata.docs.rs]
 all-features = true
-rustdoc-args = ["--cfg", "docsrs"]
+rustdoc-args = [
+    "-Zunstable-options",
+    "--generate-link-to-definition",
+    "--show-type-layout",
+]
 
 [lints]
 workspace = true
@@ -28,8 +32,6 @@ alloy-json-rpc.workspace = true
 alloy-network.workspace = true
 alloy-network-primitives.workspace = true
 alloy-node-bindings = { workspace = true, optional = true }
-alloy-signer-local = { workspace = true, optional = true }
-alloy-signer = { workspace = true, optional = true }
 alloy-rpc-client.workspace = true
 alloy-rpc-types-admin = { workspace = true, optional = true }
 alloy-rpc-types-anvil = { workspace = true, optional = true }
@@ -47,15 +49,15 @@ alloy-transport-ws = { workspace = true, optional = true }
 alloy-pubsub = { workspace = true, optional = true }
 alloy-transport.workspace = true
 alloy-primitives.workspace = true
+alloy-sol-types.workspace = true
 
 alloy-chains.workspace = true
-async-stream = "0.3"
+async-stream.workspace = true
 async-trait.workspace = true
 auto_impl.workspace = true
 dashmap = "6.0"
 futures-utils-wasm.workspace = true
 futures.workspace = true
-schnellru.workspace = true
 lru.workspace = true
 pin-project.workspace = true
 reqwest = { workspace = true, optional = true }
@@ -77,7 +79,6 @@ alloy-primitives = { workspace = true, features = ["rand"] }
 alloy-node-bindings.workspace = true
 alloy-rpc-client = { workspace = true, features = ["reqwest"] }
 alloy-rlp.workspace = true
-alloy-sol-types.workspace = true
 alloy-signer.workspace = true
 alloy-signer-local.workspace = true
 alloy-transport-http = { workspace = true, features = ["reqwest", "jwt-auth"] }
@@ -97,6 +98,7 @@ http-body-util.workspace = true
 http.workspace = true
 alloy-rpc-types-engine = { workspace = true, features = ["jwt"] }
 ci_info.workspace = true
+similar-asserts.workspace = true
 
 [features]
 default = ["reqwest", "reqwest-default-tls"]
@@ -108,6 +110,7 @@ reqwest = [
     "alloy-rpc-client/reqwest",
 ]
 hyper = ["dep:alloy-transport-http", "dep:url", "alloy-rpc-client/hyper"]
+hyper-tls = ["hyper", "alloy-transport-http/hyper-tls"]
 ws = ["pubsub", "alloy-rpc-client/ws", "alloy-transport-ws"]
 ipc = ["pubsub", "alloy-rpc-client/ipc", "alloy-transport-ipc"]
 reqwest-default-tls = ["alloy-transport-http?/reqwest-default-tls"]
@@ -115,13 +118,7 @@ reqwest-rustls-tls = ["alloy-transport-http?/reqwest-rustls-tls"]
 reqwest-native-tls = ["alloy-transport-http?/reqwest-native-tls"]
 admin-api = ["dep:alloy-rpc-types-admin"]
 anvil-api = ["dep:alloy-rpc-types-anvil"]
-anvil-node = [
-    "anvil-api",
-    "reqwest",
-    "dep:alloy-node-bindings",
-    "dep:alloy-signer-local",
-    "dep:alloy-signer",
-]
+anvil-node = ["anvil-api", "reqwest", "dep:alloy-node-bindings"]
 debug-api = ["dep:alloy-rpc-types-trace", "dep:alloy-rpc-types-debug"]
 erc4337-api = []
 engine-api = ["dep:alloy-rpc-types-engine"]
@@ -129,3 +126,4 @@ net-api = []
 trace-api = ["dep:alloy-rpc-types-trace"]
 rpc-api = ["dep:alloy-rpc-types"]
 txpool-api = ["dep:alloy-rpc-types-txpool"]
+throttle = ["alloy-transport/throttle"]

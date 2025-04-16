@@ -89,13 +89,6 @@ pub struct TraceEntry {
     pub output: Bytes,
 }
 
-impl TraceEntry {
-    /// Shield the inputs of a trace entry.
-    pub fn shield_inputs(mut self) -> Self {
-        self.input = Bytes::new();
-        self
-    }
-}
 /// Internal issuance struct for `BlockDetails` struct
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[allow(missing_copy_implementations)]

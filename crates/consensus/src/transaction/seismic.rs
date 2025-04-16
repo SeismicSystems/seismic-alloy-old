@@ -1,4 +1,4 @@
-use crate::{transaction::RlpEcdsaTx, SignableTransaction, Signed, Transaction, TxType, Typed2718};
+use crate::{SignableTransaction, Signed, Transaction, TxType, Typed2718};
 use alloy_dyn_abi::TypedData;
 #[cfg(feature = "serde")]
 use alloy_eips::eip712::{Eip712Error, Eip712Result, TypedDataRequest};
@@ -18,6 +18,8 @@ use seismic_enclave::{
     tx_io::{IoDecryptionRequest, IoEncryptionRequest},
     Keypair, PublicKey, Secp256k1, SecretKey,
 };
+
+use super::{RlpEcdsaDecodableTx, RlpEcdsaEncodableTx};
 
 /// Contains Seismic-specific encryption and message fields
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Copy)]
@@ -382,10 +384,7 @@ impl From<Signed<TxSeismic>> for TypedDataRequest {
     }
 }
 
-impl RlpEcdsaTx for TxSeismic {
-    const DEFAULT_TX_TYPE: u8 = { Self::tx_type() as u8 };
-
-    /// Outputs the length of the transaction's fields, without a RLP header.
+impl RlpEcdsaEncodableTx for TxSeismic {
     fn rlp_encoded_fields_length(&self) -> usize {
         self.chain_id.length()
             + self.nonce.length()
@@ -397,8 +396,6 @@ impl RlpEcdsaTx for TxSeismic {
             + self.input.length()
     }
 
-    /// Encodes only the transaction's fields into the desired buffer, without
-    /// a RLP header.
     fn rlp_encode_fields(&self, out: &mut dyn alloy_rlp::BufMut) {
         self.chain_id.encode(out);
         self.nonce.encode(out);
@@ -409,21 +406,11 @@ impl RlpEcdsaTx for TxSeismic {
         self.seismic_elements.encode(out);
         self.input.encode(out);
     }
+}
 
-    /// Decodes the inner [TxSeismic] fields from RLP bytes.
-    ///
-    /// NOTE: This assumes a RLP header has already been decoded, and _just_
-    /// decodes the following RLP fields in the following order:
-    ///
-    /// - `chain_id`
-    /// - `nonce`
-    /// - `max_priority_fee_per_gas`
-    /// - `max_fee_per_gas`
-    /// - `gas_limit`
-    /// - `to`
-    /// - `value`
-    /// - `data` (`input`)
-    /// - `encryption_pubkey`
+impl RlpEcdsaDecodableTx for TxSeismic {
+    const DEFAULT_TX_TYPE: u8 = { Self::tx_type() as u8 };
+
     fn rlp_decode_fields(buf: &mut &[u8]) -> alloy_rlp::Result<Self> {
         Ok(Self {
             chain_id: Decodable::decode(buf)?,
@@ -737,7 +724,6 @@ pub(super) mod serde_bincode_compat {
 #[cfg(test)]
 mod tests {
     use alloy_primitives::{b256, hex, Address, PrimitiveSignature};
-    use derive_more::FromStr;
     use k256::ecdsa::SigningKey;
     use seismic_enclave::MockEnclaveClient;
 
@@ -760,7 +746,7 @@ mod tests {
             nonce: 2,
             gas_price: 1000000000,
             gas_limit: 100000,
-            to: Address::from_str("d3e8763675e4c425df46cc3b5c0f6cbdac396046").unwrap().into(),
+            to: Address::from_slice(&hex!("d3e8763675e4c425df46cc3b5c0f6cbdac396046")).into(),
             value: U256::from(1000000000000000u64),
             seismic_elements: TxSeismicElements::default(),
             input:  hex!("a22cb4650000000000000000000000005eee75727d804a2b13038928d36f8b188945a57a0000000000000000000000000000000000000000000000000000000000000000").into(),
@@ -784,7 +770,7 @@ mod tests {
             let signer = decoded.recover_signer().unwrap();
             assert_eq!(
                 signer,
-                Address::from_str("0x166cd796821ac9f47605dcf63c313f5a0df355e7").unwrap()
+                Address::from_slice(&hex!("166cd796821ac9f47605dcf63c313f5a0df355e7"))
             );
         }
     }

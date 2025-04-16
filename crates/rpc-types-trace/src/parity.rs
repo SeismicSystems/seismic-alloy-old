@@ -53,13 +53,6 @@ impl TraceResults {
             r.set_gas_used(gas_used)
         }
     }
-
-    /// Shield the inputs and call stack of a trace results.
-    pub fn shield_inputs(mut self) -> Self {
-        self.trace = self.trace.into_iter().map(|trace| trace.shield_inputs()).collect();
-        self.vm_trace = None;
-        self
-    }
 }
 
 /// A `FullTrace` with an additional transaction hash
@@ -250,17 +243,6 @@ impl Action {
             Self::Reward(_) => ActionType::Reward,
         }
     }
-
-    /// Shield the inputs of an action.
-    pub fn shield_inputs(self) -> Self {
-        match self {
-            Self::Call(action) => Self::Call(action.shield_inputs()),
-            // TODO: do we have to shield these?
-            Self::Create(action) => Self::Create(action),
-            Self::Selfdestruct(action) => Self::Selfdestruct(action),
-            Self::Reward(action) => Self::Reward(action),
-        }
-    }
 }
 
 /// An external action type.
@@ -316,18 +298,6 @@ pub struct CallAction {
     pub to: Address,
     /// Value transferred to the destination account.
     pub value: U256,
-    /// Transaction type. Seismic tx's will have input shielded (set to empty bytes)
-    pub tx_type: isize,
-}
-
-impl CallAction {
-    /// Shield the inputs of a call action.
-    pub fn shield_inputs(mut self) -> Self {
-        if self.tx_type == alloy_consensus::transaction::TxSeismic::TX_TYPE as isize {
-            self.input = Bytes::new();
-        }
-        self
-    }
 }
 
 /// Creation method.
@@ -359,6 +329,8 @@ pub struct CreateAction {
     /// The value with which the new account is endowed.
     pub value: U256,
     /// The contract creation method.
+    // Note: this deserializes default because it's not yet supported by all clients
+    #[serde(default)]
     pub creation_method: CreationMethod,
 }
 
@@ -487,14 +459,6 @@ pub struct TransactionTrace {
     pub trace_address: Vec<usize>,
 }
 
-impl TransactionTrace {
-    /// Shield the inputs of a transaction trace.
-    pub fn shield_inputs(mut self) -> Self {
-        self.action = self.action.shield_inputs();
-        self
-    }
-}
-
 /// A wrapper for [TransactionTrace] that includes additional information about the transaction.
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -520,12 +484,17 @@ pub struct LocalizedTransactionTrace {
 }
 
 impl LocalizedTransactionTrace {
-    /// Shield the inputs of transactions.
-    pub fn shield_inputs(mut self) -> Self {
-        self.trace.action = self.trace.action.shield_inputs();
-        self
+    /// Sets the gas used of this trace.
+    ///
+    /// This is intended to manually set the root trace's gas used to the actual gas used by the
+    /// transaction, e.g. for geth's [`FlatCallFrame`](crate::geth::call::FlatCallFrame)
+    pub fn set_gas_used(&mut self, gas_used: u64) {
+        if let Some(res) = self.trace.result.as_mut() {
+            res.set_gas_used(gas_used);
+        }
     }
 }
+
 // Implement Serialize manually to ensure consistent ordering of fields to match other client's
 // format
 impl Serialize for LocalizedTransactionTrace {

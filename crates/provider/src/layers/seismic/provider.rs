@@ -1,24 +1,23 @@
 //! Seismic provider for encrypting transactions and decrypting responses
 use crate::{PendingTransactionBuilder, Provider, RootProvider, SendableTx};
 use alloy_consensus::transaction::TxSeismicElements;
-use alloy_network::{Network, TransactionBuilder};
+use alloy_network::{Ethereum, Network, TransactionBuilder};
 use alloy_primitives::Bytes;
-use alloy_transport::{Transport, TransportErrorKind, TransportResult};
+use alloy_transport::{TransportErrorKind, TransportResult};
 use std::marker::PhantomData;
 
 /// Seismic middlware for encrypting transactions and decrypting responses
 #[derive(Debug, Clone)]
-pub struct SeismicProvider<P, T, N> {
+pub struct SeismicProvider<P, N = Ethereum> {
     /// Inner provider.
     inner: P,
     /// Phantom data
-    _pd: PhantomData<(T, N)>,
+    _pd: PhantomData<N>,
 }
 
-impl<P, T, N> SeismicProvider<P, T, N>
+impl<P, N> SeismicProvider<P, N>
 where
-    P: Provider<T, N>,
-    T: Transport + Clone,
+    P: Provider<N>,
     N: Network,
 {
     /// Create a new seismic provider
@@ -35,13 +34,12 @@ where
 /// Implement the Provider trait for the SeismicProvider
 #[cfg_attr(target_arch = "wasm32", async_trait::async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait::async_trait)]
-impl<P, T, N> Provider<T, N> for SeismicProvider<P, T, N>
+impl<P, N> Provider<N> for SeismicProvider<P, N>
 where
-    P: Provider<T, N>,
-    T: Transport + Clone,
+    P: Provider<N>,
     N: Network,
 {
-    fn root(&self) -> &RootProvider<T, N> {
+    fn root(&self) -> &RootProvider<N> {
         self.inner.root()
     }
 
@@ -100,7 +98,7 @@ where
     async fn send_transaction_internal(
         &self,
         mut tx: SendableTx<N>,
-    ) -> TransportResult<PendingTransactionBuilder<T, N>> {
+    ) -> TransportResult<PendingTransactionBuilder<N>> {
         if let Some(builder) = tx.as_mut_builder() {
             if self.should_encrypt_input(builder) {
                 let network_pk = self.inner.get_tee_pubkey().await.map_err(|e| {

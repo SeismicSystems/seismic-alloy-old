@@ -22,6 +22,11 @@ pub const EMPTY_REQUESTS_HASH: B256 =
 pub struct Requests(Vec<Bytes>);
 
 impl Requests {
+    /// Construct a new [`Requests`] container with the given capacity.
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self(Vec::with_capacity(capacity))
+    }
+
     /// Construct a new [`Requests`] container.
     ///
     /// This function assumes that the request type byte is already included as the
@@ -79,11 +84,31 @@ impl Requests {
     /// Each request in the container is expected to already have the `request_type` prepended
     /// to its corresponding `requests_data`. This function directly calculates the hash based
     /// on the combined `request_type` and `requests_data`.
+    ///
+    /// Empty requests are omitted from the hash calculation.
+    /// Requests are sorted by their `request_type` before hashing, see also [Ordering](https://eips.ethereum.org/EIPS/eip-7685#ordering)
     #[cfg(feature = "sha2")]
     pub fn requests_hash(&self) -> B256 {
         use sha2::{Digest, Sha256};
         let mut hash = Sha256::new();
-        for req in self.0.iter() {
+
+        let mut requests: Vec<_> = self
+            .0
+            .iter()
+            .filter(|req| {
+                // filter out all requests that are empty or only have the type byte
+                // <type-id> <data>
+                req.len() > 1
+            })
+            .collect();
+
+        // requests should only contain unique types: `id [r1,r2,..]`
+        requests.sort_unstable_by_key(|req| {
+            // SAFETY: only includes non-empty requests
+            req[0]
+        });
+
+        for req in requests {
             let mut req_hash = Sha256::new();
             req_hash.update(req);
             hash.update(req_hash.finalize());
@@ -104,6 +129,7 @@ impl Requests {
 /// needed to simulate the presence of requests without holding actual data.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, derive_more::From)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(untagged))]
 pub enum RequestsOrHash {
     /// Stores a list of requests, allowing for dynamic requests hash calculation.
     Requests(Requests),
@@ -137,6 +163,16 @@ impl RequestsOrHash {
             Self::Requests(requests) => Some(requests),
             Self::Hash(_) => None,
         }
+    }
+
+    /// Returns `true` if the variant is a list of requests.
+    pub const fn is_requests(&self) -> bool {
+        matches!(self, Self::Requests(_))
+    }
+
+    /// Returns `true` if the variant is a precomputed hash.
+    pub const fn is_hash(&self) -> bool {
+        matches!(self, Self::Hash(_))
     }
 }
 

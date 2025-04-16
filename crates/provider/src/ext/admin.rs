@@ -2,12 +2,12 @@
 use crate::Provider;
 use alloy_network::Network;
 use alloy_rpc_types_admin::{NodeInfo, PeerInfo};
-use alloy_transport::{Transport, TransportResult};
+use alloy_transport::TransportResult;
 
 /// Admin namespace rpc interface that gives access to several non-standard RPC methods.
 #[cfg_attr(target_arch = "wasm32", async_trait::async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait::async_trait)]
-pub trait AdminApi<N, T>: Send + Sync {
+pub trait AdminApi<N>: Send + Sync {
     /// Requests adding the given peer, returning a boolean representing
     /// whether or not the peer was accepted for tracking.
     async fn add_peer(&self, record: &str) -> TransportResult<bool>;
@@ -41,11 +41,10 @@ pub trait AdminApi<N, T>: Send + Sync {
 
 #[cfg_attr(target_arch = "wasm32", async_trait::async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait::async_trait)]
-impl<N, T, P> AdminApi<N, T> for P
+impl<N, P> AdminApi<N> for P
 where
     N: Network,
-    T: Transport + Clone,
-    P: Provider<T, N>,
+    P: Provider<N>,
 {
     async fn add_peer(&self, record: &str) -> TransportResult<bool> {
         self.client().request("admin_addPeer", (record,)).await
@@ -108,9 +107,14 @@ mod test {
         async_ci_only(|| async move {
             run_with_tempdir("geth-test-1", |temp_dir_1| async move {
                 run_with_tempdir("geth-test-2", |temp_dir_2| async move {
-                    let geth1 = Geth::new().disable_discovery().data_dir(&temp_dir_1).spawn();
-                    let mut geth2 =
-                        Geth::new().disable_discovery().port(0u16).data_dir(&temp_dir_2).spawn();
+                    let geth1 =
+                        Geth::new().disable_discovery().keep_stderr().data_dir(&temp_dir_1).spawn();
+                    let mut geth2 = Geth::new()
+                        .disable_discovery()
+                        .keep_stderr()
+                        .port(0u16)
+                        .data_dir(&temp_dir_2)
+                        .spawn();
 
                     let provider1 = ProviderBuilder::new().on_http(geth1.endpoint_url());
                     let provider2 = ProviderBuilder::new().on_http(geth2.endpoint_url());

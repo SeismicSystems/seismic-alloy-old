@@ -1,13 +1,14 @@
-use crate::{transaction::RlpEcdsaTx, SignableTransaction, Signed, Transaction, TxType};
+use crate::{
+    transaction::{RlpEcdsaDecodableTx, RlpEcdsaEncodableTx},
+    SignableTransaction, Signed, Transaction, TxType,
+};
 use alloc::vec::Vec;
-use alloy_eips::{eip2930::AccessList, eip7702::SignedAuthorization};
+use alloy_eips::{eip2930::AccessList, eip7702::SignedAuthorization, Typed2718};
 use alloy_primitives::{
     keccak256, Bytes, ChainId, PrimitiveSignature as Signature, TxKind, B256, U256,
 };
 use alloy_rlp::{length_of_length, BufMut, Decodable, Encodable, Header, Result};
 use core::mem;
-
-use super::Typed2718;
 
 /// Legacy transaction.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
@@ -110,9 +111,7 @@ impl TxLegacy {
 
 // Legacy transaction network and 2718 encodings are identical to the RLP
 // encoding.
-impl RlpEcdsaTx for TxLegacy {
-    const DEFAULT_TX_TYPE: u8 = { Self::TX_TYPE as u8 };
-
+impl RlpEcdsaEncodableTx for TxLegacy {
     fn rlp_encoded_fields_length(&self) -> usize {
         self.nonce.length()
             + self.gas_price.length()
@@ -158,17 +157,27 @@ impl RlpEcdsaTx for TxLegacy {
         self.rlp_encode_signed(signature, out);
     }
 
-    fn network_encoded_length(&self, signature: &Signature) -> usize {
-        self.rlp_encoded_length_with_signature(signature)
-    }
-
     fn network_header(&self, signature: &Signature) -> Header {
         self.rlp_header_signed(signature)
+    }
+
+    fn network_encoded_length(&self, signature: &Signature) -> usize {
+        self.rlp_encoded_length_with_signature(signature)
     }
 
     fn network_encode_with_type(&self, signature: &Signature, _ty: u8, out: &mut dyn BufMut) {
         self.rlp_encode_signed(signature, out);
     }
+
+    fn tx_hash_with_type(&self, signature: &Signature, _ty: u8) -> alloy_primitives::TxHash {
+        let mut buf = Vec::with_capacity(self.rlp_encoded_length_with_signature(signature));
+        self.rlp_encode_signed(signature, &mut buf);
+        keccak256(&buf)
+    }
+}
+
+impl RlpEcdsaDecodableTx for TxLegacy {
+    const DEFAULT_TX_TYPE: u8 = { Self::TX_TYPE as u8 };
 
     fn rlp_decode_fields(buf: &mut &[u8]) -> alloy_rlp::Result<Self> {
         Ok(Self {
@@ -224,12 +233,6 @@ impl RlpEcdsaTx for TxLegacy {
         _ty: u8,
     ) -> alloy_eips::eip2718::Eip2718Result<Signed<Self>> {
         Self::rlp_decode_signed(buf).map_err(Into::into)
-    }
-
-    fn tx_hash_with_type(&self, signature: &Signature, _ty: u8) -> alloy_primitives::TxHash {
-        let mut buf = Vec::with_capacity(self.rlp_encoded_length_with_signature(signature));
-        self.rlp_encode_signed(signature, &mut buf);
-        keccak256(&buf)
     }
 }
 
@@ -342,11 +345,6 @@ impl SignableTransaction<Signature> for TxLegacy {
         let payload_length = self.rlp_encoded_fields_length() + self.eip155_fields_len();
         // 'header length' + 'payload length'
         Header { list: true, payload_length }.length_with_payload()
-    }
-
-    fn into_signed(self, signature: Signature) -> Signed<Self> {
-        let hash = self.tx_hash(&signature);
-        Signed::new_unchecked(self, signature, hash)
     }
 }
 
@@ -520,9 +518,11 @@ pub mod signed_legacy_serde {
         let SignedLegacy { tx, signature, hash } = SignedLegacy::deserialize(deserializer)?;
         let (parity, chain_id) = from_eip155_value(signature.v.to())
             .ok_or_else(|| serde::de::Error::custom("invalid EIP-155 signature parity value"))?;
-        if let Some(tx_chain_id) = tx.chain_id() {
-            // Some nodes respond with 0 chain ID for legacy transactions when it is missing.
-            if tx_chain_id > 0 && chain_id != Some(tx_chain_id) {
+
+        // Note: some implementations always set the chain id in the response, so we only check if
+        // they differ if both are set.
+        if let Some((tx_chain_id, chain_id)) = tx.chain_id().zip(chain_id) {
+            if tx_chain_id != chain_id {
                 return Err(serde::de::Error::custom("chain id mismatch"));
             }
         }
@@ -687,7 +687,7 @@ mod tests {
     #[test]
     // Test vector from https://github.com/alloy-rs/alloy/issues/125
     fn decode_legacy_and_recover_signer() {
-        use crate::transaction::RlpEcdsaTx;
+        use crate::transaction::RlpEcdsaDecodableTx;
         let raw_tx = alloy_primitives::bytes!("f9015482078b8505d21dba0083022ef1947a250d5630b4cf539739df2c5dacb4c659f2488d880c46549a521b13d8b8e47ff36ab50000000000000000000000000000000000000000000066ab5a608bd00a23f2fe000000000000000000000000000000000000000000000000000000000000008000000000000000000000000048c04ed5691981c42154c6167398f95e8f38a7ff00000000000000000000000000000000000000000000000000000000632ceac70000000000000000000000000000000000000000000000000000000000000002000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc20000000000000000000000006c6ee5e31d828de241282b9606c8e98ea48526e225a0c9077369501641a92ef7399ff81c21639ed4fd8fc69cb793cfa1dbfab342e10aa0615facb2f1bcf3274a354cfe384a38d0cc008a11c2dd23a69111bc6930ba27a8");
 
         let tx = TxLegacy::rlp_decode_signed(&mut raw_tx.as_ref()).unwrap();

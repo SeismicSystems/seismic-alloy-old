@@ -9,13 +9,18 @@
 
 extern crate alloc;
 
+#[cfg(feature = "arbitrary")]
+use rand as _;
+
+use once_cell as _;
+
 pub use alloy_trie::TrieAccount;
 
 #[deprecated(since = "0.7.3", note = "use TrieAccount instead")]
 pub use alloy_trie::TrieAccount as Account;
 
 mod block;
-pub use block::{Block, BlockBody, BlockHeader, Header};
+pub use block::{Block, BlockBody, BlockHeader, EthBlock, Header};
 
 pub mod constants;
 pub use constants::{EMPTY_OMMER_ROOT_HASH, EMPTY_ROOT_HASH};
@@ -26,20 +31,24 @@ pub use receipt::{
     RlpDecodableReceipt, RlpEncodableReceipt, TxReceipt,
 };
 
+pub mod conditional;
 pub mod proofs;
 
 pub mod transaction;
 #[cfg(feature = "kzg")]
 pub use transaction::BlobTransactionValidationError;
 pub use transaction::{
-    SignableTransaction, Transaction, TxEip1559, TxEip2930, TxEip4844, TxEip4844Variant,
-    TxEip4844WithSidecar, TxEip7702, TxEnvelope, TxLegacy, TxSeismic, TxType, Typed2718,
-    TypedTransaction,
+    EthereumTxEnvelope, EthereumTypedTransaction, SignableTransaction, Transaction, TxEip1559,
+    TxEip2930, TxEip4844, TxEip4844Variant, TxEip4844WithSidecar, TxEip7702, TxEnvelope, TxLegacy,
+    TxSeismic, TxType, TypedTransaction,
 };
 
-pub use alloy_eips::eip4844::{
-    builder::{SidecarBuilder, SidecarCoder, SimpleCoder},
-    utils, Blob, BlobTransactionSidecar, Bytes48,
+pub use alloy_eips::{
+    eip4844::{
+        builder::{SidecarBuilder, SidecarCoder, SimpleCoder},
+        utils, Blob, BlobTransactionSidecar, Bytes48,
+    },
+    Typed2718,
 };
 
 #[cfg(feature = "kzg")]
@@ -49,6 +58,8 @@ pub use alloy_primitives::{Sealable, Sealed};
 
 mod signed;
 pub use signed::Signed;
+
+pub mod error;
 
 /// Bincode-compatible serde implementations for consensus types.
 ///
@@ -61,6 +72,7 @@ pub use signed::Signed;
 pub mod serde_bincode_compat {
     pub use super::{
         block::serde_bincode_compat::*,
+        receipt::serde_bincode_compat::*,
         transaction::{serde_bincode_compat as transaction, serde_bincode_compat::*},
     };
 }

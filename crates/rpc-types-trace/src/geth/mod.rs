@@ -198,24 +198,6 @@ impl GethTrace {
             _ => Err(UnexpectedTracerError(self)),
         }
     }
-
-    /// Shield the inputs of transactions.
-    /// Meant to be called right before sending the trace to the client.
-    pub fn shield_inputs(self) -> Self {
-        match self {
-            Self::CallTracer(frame) => Self::CallTracer(frame.shield_inputs()),
-            Self::FlatCallTracer(frames) => Self::FlatCallTracer(
-                frames.into_iter().map(|frame| frame.shield_inputs()).collect(),
-            ),
-            Self::MuxTracer(frame) => Self::MuxTracer(frame.shield_inputs()),
-            // TODO: do we have to shield these?
-            Self::FourByteTracer(frame) => Self::FourByteTracer(frame),
-            Self::PreStateTracer(frame) => Self::PreStateTracer(frame),
-            Self::NoopTracer(frame) => Self::NoopTracer(frame),
-            Self::Default(frame) => Self::Default(frame),
-            Self::JS(value) => Self::JS(value),
-        }
-    }
 }
 
 impl Default for GethTrace {

@@ -1,5 +1,8 @@
 use crate::{UnknownTxEnvelope, UnknownTypedTransaction};
-use alloy_consensus::{Transaction as TransactionTrait, TxEnvelope, Typed2718, TypedTransaction};
+use alloy_consensus::{
+    error::ValueError, transaction::Either, Signed, Transaction as TransactionTrait, TxEip1559,
+    TxEip2930, TxEip4844Variant, TxEip7702, TxEnvelope, TxLegacy, Typed2718, TypedTransaction,
+};
 use alloy_eips::{
     eip2718::{Decodable2718, Encodable2718},
     eip7702::SignedAuthorization,
@@ -220,6 +223,119 @@ pub enum AnyTxEnvelope {
     Unknown(UnknownTxEnvelope),
 }
 
+impl AnyTxEnvelope {
+    /// Returns true if this is the ethereum transaction variant
+    pub const fn is_ethereum(&self) -> bool {
+        matches!(self, Self::Ethereum(_))
+    }
+
+    /// Returns true if this is the unknown transaction variant
+    pub const fn is_unknown(&self) -> bool {
+        matches!(self, Self::Unknown(_))
+    }
+
+    /// Returns the inner Ethereum transaction envelope, if it is an Ethereum transaction.
+    pub const fn as_envelope(&self) -> Option<&TxEnvelope> {
+        match self {
+            Self::Ethereum(inner) => Some(inner),
+            Self::Unknown(_) => None,
+        }
+    }
+
+    /// Returns the inner [`UnknownTxEnvelope`] if it is an unknown variant.
+    pub const fn as_unknown(&self) -> Option<&UnknownTxEnvelope> {
+        match self {
+            Self::Unknown(inner) => Some(inner),
+            Self::Ethereum(_) => None,
+        }
+    }
+
+    /// Returns the inner Ethereum transaction envelope, if it is an Ethereum transaction.
+    /// If the transaction is not an Ethereum transaction, it is returned as an error.
+    pub fn try_into_envelope(self) -> Result<TxEnvelope, ValueError<Self>> {
+        match self {
+            Self::Ethereum(inner) => Ok(inner),
+            this => Err(ValueError::new_static(this, "unknown transaction envelope")),
+        }
+    }
+
+    /// Returns the inner [`UnknownTxEnvelope`], if it is an unknown transaction.
+    /// If the transaction is not an unknown transaction, it is returned as an error.
+    pub fn try_into_unknown(self) -> Result<UnknownTxEnvelope, Self> {
+        match self {
+            Self::Unknown(inner) => Ok(inner),
+            this => Err(this),
+        }
+    }
+
+    /// Attempts to convert the [`UnknownTxEnvelope`] into `Either::Right` if this is an unknown
+    /// variant.
+    ///
+    /// Returns `Either::Left` with the ethereum `TxEnvelope` if this is the
+    /// [`AnyTxEnvelope::Ethereum`] variant and [`Either::Right`] with the converted variant.
+    pub fn try_into_either<T>(self) -> Result<Either<TxEnvelope, T>, T::Error>
+    where
+        T: TryFrom<UnknownTxEnvelope>,
+    {
+        self.try_map_unknown(|inner| inner.try_into())
+    }
+
+    /// Attempts to convert the [`UnknownTxEnvelope`] into `Either::Right` if this is an
+    /// [`AnyTxEnvelope::Unknown`].
+    ///
+    /// Returns `Either::Left` with the ethereum `TxEnvelope` if this is the
+    /// [`AnyTxEnvelope::Ethereum`] variant and [`Either::Right`] with the converted variant.
+    pub fn try_map_unknown<T, E>(
+        self,
+        f: impl FnOnce(UnknownTxEnvelope) -> Result<T, E>,
+    ) -> Result<Either<TxEnvelope, T>, E> {
+        match self {
+            Self::Ethereum(tx) => Ok(Either::Left(tx)),
+            Self::Unknown(tx) => Ok(Either::Right(f(tx)?)),
+        }
+    }
+
+    /// Returns the [`TxLegacy`] variant if the transaction is a legacy transaction.
+    pub const fn as_legacy(&self) -> Option<&Signed<TxLegacy>> {
+        match self.as_envelope() {
+            Some(TxEnvelope::Legacy(tx)) => Some(tx),
+            _ => None,
+        }
+    }
+
+    /// Returns the [`TxEip2930`] variant if the transaction is an EIP-2930 transaction.
+    pub const fn as_eip2930(&self) -> Option<&Signed<TxEip2930>> {
+        match self.as_envelope() {
+            Some(TxEnvelope::Eip2930(tx)) => Some(tx),
+            _ => None,
+        }
+    }
+
+    /// Returns the [`TxEip1559`] variant if the transaction is an EIP-1559 transaction.
+    pub const fn as_eip1559(&self) -> Option<&Signed<TxEip1559>> {
+        match self.as_envelope() {
+            Some(TxEnvelope::Eip1559(tx)) => Some(tx),
+            _ => None,
+        }
+    }
+
+    /// Returns the [`TxEip4844Variant`] variant if the transaction is an EIP-4844 transaction.
+    pub const fn as_eip4844(&self) -> Option<&Signed<TxEip4844Variant>> {
+        match self.as_envelope() {
+            Some(TxEnvelope::Eip4844(tx)) => Some(tx),
+            _ => None,
+        }
+    }
+
+    /// Returns the [`TxEip7702`] variant if the transaction is an EIP-7702 transaction.
+    pub const fn as_eip7702(&self) -> Option<&Signed<TxEip7702>> {
+        match self.as_envelope() {
+            Some(TxEnvelope::Eip7702(tx)) => Some(tx),
+            _ => None,
+        }
+    }
+}
+
 impl Typed2718 for AnyTxEnvelope {
     fn ty(&self) -> u8 {
         match self {
@@ -230,13 +346,6 @@ impl Typed2718 for AnyTxEnvelope {
 }
 
 impl Encodable2718 for AnyTxEnvelope {
-    fn type_flag(&self) -> Option<u8> {
-        match self {
-            Self::Ethereum(t) => t.type_flag(),
-            Self::Unknown(inner) => Some(inner.ty()),
-        }
-    }
-
     fn encode_2718_len(&self) -> usize {
         match self {
             Self::Ethereum(t) => t.encode_2718_len(),
