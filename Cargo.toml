@@ -78,7 +78,7 @@ alloy-primitives = { version = "0.8.22", default-features = false }
 alloy-sol-types = { version = "0.8.22", default-features = false }
 
 alloy-rlp = { version = "0.3.9", default-features = false }
-alloy-trie = { version = "0.7.6", default-features = false }
+alloy-trie = { version = "=0.7.9", default-features = false }
 
 alloy-chains = { version = "0.1.18", default-features = false }
 
@@ -184,3 +184,4 @@ alloy-sol-type-parser = { git = "https://github.com/SeismicSystems/seismic-alloy
 alloy-dyn-abi = { git = "https://github.com/SeismicSystems/seismic-alloy-core.git", rev = "fac24f18" }
 
 seismic-enclave = { git = "https://github.com/SeismicSystems/seismic-enclave.git", rev = "b50a9ae"}
+alloy-trie = { git = "https://github.com/SeismicSystems/seismic-trie.git", rev = "d29c797" }

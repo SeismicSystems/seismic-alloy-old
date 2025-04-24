@@ -262,6 +262,7 @@ impl GenesisAccount {
 
 impl From<GenesisAccount> for TrieAccount {
     fn from(account: GenesisAccount) -> Self {
+        let is_private = false; // accounts are always public
         let storage_root = account
             .storage
             .map(|storage| {
@@ -269,7 +270,7 @@ impl From<GenesisAccount> for TrieAccount {
                     storage
                         .into_iter()
                         .filter(|(_, value)| !value.is_zero())
-                        .map(|(slot, value)| (slot, U256::from_be_bytes(*value))),
+                        .map(|(slot, value)| (slot, U256::from_be_bytes(*value), is_private)),
                 )
             })
             .unwrap_or(EMPTY_ROOT_HASH);
@@ -1705,10 +1706,15 @@ mod tests {
         // Convert the GenesisAccount to a TrieAccount
         let trie_account: TrieAccount = genesis_account.into();
 
-        let expected_storage_root = storage_root_unhashed(BTreeMap::from([(
-            B256::from([0x01; 32]),
-            U256::from_be_bytes(*B256::from([0x02; 32])),
-        )]));
+        let is_private = false; // accounts are always public
+        let expected_storage_root = storage_root_unhashed(
+            BTreeMap::from([(
+                B256::from([0x01; 32]),
+                U256::from_be_bytes(*B256::from([0x02; 32])),
+            )])
+            .into_iter()
+            .map(|(slot, value)| (slot, value, is_private)),
+        );
 
         // Check that the fields are properly set.
         assert_eq!(trie_account.nonce, 10);
