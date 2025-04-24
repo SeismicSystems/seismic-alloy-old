@@ -75,7 +75,7 @@ alloy-primitives = { version = "0.8.22", default-features = false }
 alloy-sol-types = { version = "0.8.22", default-features = false }
 
 alloy-rlp = { version = "0.3.9", default-features = false }
-alloy-trie = { version = "0.7.6", default-features = false }
+alloy-trie = { version = "=0.7.9", default-features = false }
 
 alloy-chains = { version = "0.1.18", default-features = false }
 
@@ -169,3 +169,6 @@ serial_test = "3.0"
 similar-asserts = "1.5"
 tempfile = "3.10"
 tower-http = "0.6.1"
+
+[patch.crates-io]
+alloy-trie = { git = "https://github.com/SeismicSystems/seismic-trie.git", rev = "d29c797" }
