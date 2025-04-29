@@ -299,7 +299,7 @@ impl TxSeismic {
                   { "name": "name", "type": "string" },
                   { "name": "version", "type": "string" },
                   { "name": "chainId", "type": "uint256" },
-                  { "name": "verifyingContract", "type": "address" },
+                  // no verifying contract since this happens in RPC
                 ],
                 "TxSeismic": [
                   { "name": "chainId", "type": "uint64" },
@@ -321,8 +321,6 @@ impl TxSeismic {
                 "name": "Seismic Transaction",
                 "version": self.seismic_elements.message_version.to_string(),
                 "chainId": self.chain_id,
-                // no verifying contract since this happens in RPC
-                "verifyingContract": "0x0000000000000000000000000000000000000000",
             },
             "message": {
                 "chainId": self.chain_id.to_string(),
